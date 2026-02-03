@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Download, FileSpreadsheet } from 'lucide-react';
+import './styles.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
@@ -99,128 +100,6 @@ function ReportsPage({ selectedTerm, terms }) {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .page {
-          max-width: 1400px;
-        }
-
-        .page-header {
-          margin-bottom: 24px;
-        }
-
-        .page-title {
-          font-size: 24px;
-          font-weight: 600;
-          color: #111827;
-          margin-bottom: 4px;
-        }
-
-        .page-subtitle {
-          font-size: 14px;
-          color: #6B7280;
-        }
-
-        .exports-section {
-          background: white;
-          border-radius: 12px;
-          padding: 24px;
-        }
-
-        .section-header {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 20px;
-          color: #1D4648;
-        }
-
-        .section-header h2 {
-          font-size: 18px;
-          font-weight: 600;
-        }
-
-        .export-cards {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-          gap: 20px;
-        }
-
-        .export-card {
-          border: 1px solid #E5E7EB;
-          border-radius: 10px;
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .export-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 10px;
-          background-color: #E8F5F3;
-          color: #3B7073;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .export-icon.audit {
-          background-color: #FEF3C7;
-          color: #92400E;
-        }
-
-        .export-info h3 {
-          font-size: 16px;
-          font-weight: 600;
-          color: #111827;
-          margin-bottom: 6px;
-        }
-
-        .export-info p {
-          font-size: 13px;
-          color: #6B7280;
-          margin-bottom: 12px;
-        }
-
-        .export-columns {
-          font-size: 12px;
-          color: #6B7280;
-          padding-left: 16px;
-          margin: 0;
-        }
-
-        .export-columns li {
-          margin-bottom: 4px;
-        }
-
-        .export-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 12px 16px;
-          border: none;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          background-color: #3B7073;
-          color: white;
-          cursor: pointer;
-          transition: background-color 0.2s;
-          margin-top: auto;
-        }
-
-        .export-btn:hover:not(:disabled) {
-          background-color: #1D4648;
-        }
-
-        .export-btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-      `}</style>
     </div>
   );
 }
