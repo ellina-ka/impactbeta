@@ -5,7 +5,7 @@ import './styles.css';
 const ADMINS = [
   { 
     id: 'lio', 
-    name: 'Lio Khrais-Azibi', 
+    name: 'Lio Elalouf', 
     role: 'Platform Admin',
     email: 'lio@myimpact.org',
     department: 'Technology',
