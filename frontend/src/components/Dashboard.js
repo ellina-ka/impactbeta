@@ -2,6 +2,7 @@ import React from 'react';
 import KPICard from './KPICard';
 import ProgramsPanel from './ProgramsPanel';
 import VerificationPanel from './VerificationPanel';
+import './styles.css';
 
 function Dashboard({ 
   kpis, 
@@ -70,51 +71,6 @@ function Dashboard({
           loading={loading}
         />
       </div>
-
-      <style jsx>{`
-        .dashboard {
-          max-width: 1400px;
-        }
-
-        .dashboard-header {
-          margin-bottom: 24px;
-        }
-
-        .dashboard-title {
-          font-size: 24px;
-          font-weight: 600;
-          color: #111827;
-        }
-
-        .kpi-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-          margin-bottom: 24px;
-        }
-
-        .panels-grid {
-          display: grid;
-          grid-template-columns: 1fr 1.5fr;
-          gap: 24px;
-        }
-
-        @media (max-width: 1200px) {
-          .kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .panels-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .kpi-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
     </div>
   );
 }
