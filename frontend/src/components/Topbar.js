@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Bell, MessageSquare, ChevronDown } from 'lucide-react';
 import './styles.css';
 
 function Topbar({ terms, selectedTerm, onTermChange }) {
+  const [tooltip, setTooltip] = useState(null);
+
+  const admins = [
+    { id: 'ellina', name: 'Ellina', role: 'Program Admin', image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face' },
+    { id: 'lio', name: 'Lio', role: 'Platform Admin', image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face' }
+  ];
+
   return (
     <header className="topbar" data-testid="topbar">
       {/* Search */}
@@ -10,7 +17,7 @@ function Topbar({ terms, selectedTerm, onTermChange }) {
         <Search size={18} className="search-icon" />
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Search students, programs..."
           className="search-input"
           data-testid="search-input"
         />
@@ -45,20 +52,25 @@ function Topbar({ terms, selectedTerm, onTermChange }) {
           <span className="badge">3</span>
         </button>
 
-        {/* Avatar */}
+        {/* Admin Avatars */}
         <div className="avatar-group">
-          <div className="avatar" data-testid="user-avatar">
-            <img 
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face" 
-              alt="Admin"
-            />
-          </div>
-          <div className="avatar secondary">
-            <img 
-              src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face" 
-              alt="User"
-            />
-          </div>
+          {admins.map((admin, index) => (
+            <div 
+              key={admin.id}
+              className={`avatar ${index > 0 ? 'secondary' : ''}`}
+              data-testid={`avatar-${admin.id}`}
+              onMouseEnter={() => setTooltip(admin.id)}
+              onMouseLeave={() => setTooltip(null)}
+            >
+              <img src={admin.image} alt={admin.name} />
+              {tooltip === admin.id && (
+                <div className="avatar-tooltip">
+                  <strong>{admin.name}</strong>
+                  <span>{admin.role}</span>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </header>

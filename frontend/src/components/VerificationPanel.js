@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, X } from 'lucide-react';
+import { MoreHorizontal, X, Clock, CheckCircle } from 'lucide-react';
 import './styles.css';
 
 const REJECTION_REASONS = [
@@ -53,18 +53,19 @@ function VerificationPanel({ requests, onConfirm, onReject, onFlag, loading }) {
     <div className="panel" data-testid="verification-panel">
       <div className="panel-header">
         <h2 className="panel-title">Verification Requests</h2>
-        <button className="more-btn">
-          <MoreHorizontal size={18} />
-        </button>
+        <span className="panel-badge">{requests.length} pending</span>
       </div>
 
       <div className="requests-list">
         {loading ? (
           <div className="loading-state">Loading requests...</div>
         ) : requests.length === 0 ? (
-          <div className="empty-state">No pending verification requests</div>
+          <div className="empty-state">
+            <CheckCircle size={32} className="empty-icon" />
+            <p>All caught up! No pending verification requests.</p>
+          </div>
         ) : (
-          requests.map((request) => (
+          requests.slice(0, 10).map((request) => (
             <div 
               key={request.request_id} 
               className="request-item"
@@ -77,22 +78,26 @@ function VerificationPanel({ requests, onConfirm, onReject, onFlag, loading }) {
                 <div className="request-info">
                   <div className="student-name">{request.student_name}</div>
                   <div className="request-details">
-                    <span className="ngo-name">{request.ngo_name}</span>
-                    {request.action_description && (
-                      <span className="action-desc"> · {request.action_description}</span>
-                    )}
+                    <span className="program-tag">{request.program_name}</span>
+                    <span className="hours-tag">
+                      <Clock size={12} /> {request.hours}h
+                    </span>
+                    <span className="date-tag">{request.log_date}</span>
                   </div>
+                  <div className="request-description">{request.description}</div>
                 </div>
               </div>
               
               <div className="request-right">
-                <span className="status-pill">Awaiting confirmation</span>
+                <span className={`evidence-pill ${request.evidence_tier}`}>
+                  {request.evidence_tier === 'self_reported' ? 'Self-reported' : 'Org confirmed'}
+                </span>
                 <button
                   className="confirm-btn"
                   onClick={() => onConfirm(request.request_id)}
                   data-testid={`confirm-btn-${request.request_id}`}
                 >
-                  Confirm participation
+                  Confirm
                 </button>
                 <div className="menu-container">
                   <button 

@@ -11,7 +11,7 @@ const iconMap = {
   default: Heart
 };
 
-function ProgramsPanel({ programs, loading }) {
+function ProgramsPanel({ programs, loading, onProgramClick }) {
   return (
     <div className="panel" data-testid="programs-panel">
       <div className="panel-header">
@@ -33,6 +33,7 @@ function ProgramsPanel({ programs, loading }) {
               <div 
                 key={program.program_id} 
                 className="program-item"
+                onClick={() => onProgramClick(program.program_id)}
                 data-testid={`program-${program.program_id}`}
               >
                 <div className="program-icon">
@@ -40,6 +41,7 @@ function ProgramsPanel({ programs, loading }) {
                 </div>
                 <div className="program-info">
                   <span className="program-name">{program.name}</span>
+                  <span className="program-count">{program.active_students_count} students</span>
                 </div>
                 <ChevronRight size={18} className="chevron" />
               </div>

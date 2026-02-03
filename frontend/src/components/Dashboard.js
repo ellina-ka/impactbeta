@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import KPICard from './KPICard';
 import ProgramsPanel from './ProgramsPanel';
 import VerificationPanel from './VerificationPanel';
+import ProgramModal from './ProgramModal';
 import './styles.css';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 function Dashboard({ 
   kpis, 
@@ -12,14 +15,38 @@ function Dashboard({
   onReject, 
   onFlag, 
   loading,
-  universityName 
+  settings,
+  selectedTerm
 }) {
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [programDetails, setProgramDetails] = useState(null);
+  const [loadingProgram, setLoadingProgram] = useState(false);
+
+  const handleProgramClick = async (programId) => {
+    setLoadingProgram(true);
+    try {
+      const response = await fetch(`${API_URL}/api/programs/${programId}`);
+      const data = await response.json();
+      setProgramDetails(data);
+      setSelectedProgram(programId);
+    } catch (error) {
+      console.error('Error fetching program details:', error);
+    } finally {
+      setLoadingProgram(false);
+    }
+  };
+
+  const closeModal = () => {
+    setSelectedProgram(null);
+    setProgramDetails(null);
+  };
+
   return (
     <div className="dashboard" data-testid="dashboard">
       {/* Header */}
       <div className="dashboard-header">
         <h1 className="dashboard-title" data-testid="dashboard-title">
-          {universityName} Impact Dashboard
+          {settings.university_name} – {settings.dashboard_title || 'Test Pilot Dashboard'}
         </h1>
       </div>
 
@@ -50,7 +77,7 @@ function Dashboard({
           testId="kpi-active-programs"
         />
         <KPICard
-          title="Avg Retention Rate"
+          title="Completion Rate"
           value={kpis?.retention_rate?.value || 0}
           delta={kpis?.retention_rate?.delta || ''}
           variant="teal"
@@ -62,7 +89,11 @@ function Dashboard({
 
       {/* Two-Panel Section */}
       <div className="panels-grid">
-        <ProgramsPanel programs={programs} loading={loading} />
+        <ProgramsPanel 
+          programs={programs} 
+          loading={loading} 
+          onProgramClick={handleProgramClick}
+        />
         <VerificationPanel
           requests={verificationRequests}
           onConfirm={onConfirm}
@@ -71,6 +102,15 @@ function Dashboard({
           loading={loading}
         />
       </div>
+
+      {/* Program Details Modal */}
+      {selectedProgram && (
+        <ProgramModal
+          program={programDetails}
+          loading={loadingProgram}
+          onClose={closeModal}
+        />
+      )}
     </div>
   );
 }

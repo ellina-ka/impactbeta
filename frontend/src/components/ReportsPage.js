@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { FileText, Download, FileSpreadsheet } from 'lucide-react';
+import { FileText, Download, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import './styles.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
-function ReportsPage({ selectedTerm, terms }) {
+function ReportsPage({ selectedTerm, terms, onExport }) {
   const [exporting, setExporting] = useState(null);
   const selectedTermData = terms.find(t => t.term_id === selectedTerm);
 
@@ -28,6 +28,9 @@ function ReportsPage({ selectedTerm, terms }) {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      // Notify parent of successful export
+      onExport(type === 'logs' ? 'Verified logs CSV' : 'Audit trail CSV');
     } catch (error) {
       console.error('Export error:', error);
     } finally {
@@ -58,9 +61,10 @@ function ReportsPage({ selectedTerm, terms }) {
               <p>Export all verified service hour records for the selected term.</p>
               <ul className="export-columns">
                 <li>Student name & email</li>
-                <li>Program name</li>
+                <li>Program name & term</li>
                 <li>Date, hours, status</li>
                 <li>Evidence tier</li>
+                <li>Verifier & timestamp</li>
               </ul>
             </div>
             <button 
@@ -69,8 +73,11 @@ function ReportsPage({ selectedTerm, terms }) {
               disabled={exporting === 'logs'}
               data-testid="export-logs-btn"
             >
-              <Download size={16} />
-              {exporting === 'logs' ? 'Exporting...' : 'Export CSV'}
+              {exporting === 'logs' ? (
+                <>Exporting...</>
+              ) : (
+                <><Download size={16} /> Export CSV</>
+              )}
             </button>
           </div>
 
@@ -84,8 +91,9 @@ function ReportsPage({ selectedTerm, terms }) {
               <ul className="export-columns">
                 <li>Actor & role</li>
                 <li>Action performed</li>
+                <li>Entity details</li>
                 <li>Timestamp</li>
-                <li>Notes & reasons</li>
+                <li>Notes & rejection reasons</li>
               </ul>
             </div>
             <button 
@@ -94,8 +102,11 @@ function ReportsPage({ selectedTerm, terms }) {
               disabled={exporting === 'audit'}
               data-testid="export-audit-btn"
             >
-              <Download size={16} />
-              {exporting === 'audit' ? 'Exporting...' : 'Export CSV'}
+              {exporting === 'audit' ? (
+                <>Exporting...</>
+              ) : (
+                <><Download size={16} /> Export CSV</>
+              )}
             </button>
           </div>
         </div>
