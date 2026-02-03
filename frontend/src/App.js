@@ -191,6 +191,7 @@ function App() {
             selectedTerm={selectedTerm} 
             students={students}
             loading={loading}
+            onNavigateToActivities={() => setActivePage('activities')}
           />
         );
       case 'reports':
