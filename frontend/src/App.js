@@ -184,7 +184,21 @@ function App() {
           />
         );
       case 'activities':
-        return <ActivitiesPage selectedTerm={selectedTerm} />;
+        return (
+          <ActivitiesPage 
+            selectedTerm={selectedTerm} 
+            onActionComplete={(action, hours) => {
+              if (action === 'confirm') {
+                showToast(`Verified ${hours} hours successfully!`, 'success');
+              } else if (action === 'reject') {
+                showToast('Request rejected', 'warning');
+              } else if (action === 'flag') {
+                showToast('Request flagged for review', 'warning');
+              }
+              fetchTermData();
+            }}
+          />
+        );
       case 'participants':
         return (
           <ParticipantsPage 
