@@ -191,25 +191,69 @@ class MyImpactAPITester:
 
     def test_export_verified_logs(self):
         """Test exporting verified logs"""
-        success, _ = self.run_test(
-            "Export Verified Logs", 
-            "GET", 
-            "api/export/verified-logs", 
-            200, 
-            params={"term_id": "spring-2026"}
-        )
-        return success
+        url = f"{self.base_url}/api/export/verified-logs"
+        headers = {'Content-Type': 'application/json'}
+        
+        self.tests_run += 1
+        print(f"\n🔍 Testing Export Verified Logs...")
+        print(f"   URL: GET {url}")
+        
+        try:
+            response = requests.get(url, headers=headers, params={"term_id": "spring-2026"})
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                print(f"   CSV Content: {response.text[:100]}...")
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                self.failed_tests.append({
+                    'name': 'Export Verified Logs',
+                    'expected': 200,
+                    'actual': response.status_code,
+                    'response': response.text[:200]
+                })
+            return success
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            self.failed_tests.append({
+                'name': 'Export Verified Logs',
+                'error': str(e)
+            })
+            return False
 
     def test_export_audit_trail(self):
         """Test exporting audit trail"""
-        success, _ = self.run_test(
-            "Export Audit Trail", 
-            "GET", 
-            "api/export/audit-trail", 
-            200, 
-            params={"term_id": "spring-2026"}
-        )
-        return success
+        url = f"{self.base_url}/api/export/audit-trail"
+        headers = {'Content-Type': 'application/json'}
+        
+        self.tests_run += 1
+        print(f"\n🔍 Testing Export Audit Trail...")
+        print(f"   URL: GET {url}")
+        
+        try:
+            response = requests.get(url, headers=headers, params={"term_id": "spring-2026"})
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                print(f"   CSV Content: {response.text[:100]}...")
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                self.failed_tests.append({
+                    'name': 'Export Audit Trail',
+                    'expected': 200,
+                    'actual': response.status_code,
+                    'response': response.text[:200]
+                })
+            return success
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            self.failed_tests.append({
+                'name': 'Export Audit Trail',
+                'error': str(e)
+            })
+            return False
 
     def test_get_audit_events(self):
         """Test getting audit events"""
