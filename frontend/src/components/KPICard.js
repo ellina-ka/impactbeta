@@ -1,4 +1,5 @@
 import React from 'react';
+import './styles.css';
 
 const variants = {
   green: {
@@ -47,40 +48,6 @@ function KPICard({ title, value, delta, variant = 'green', isPercentage = false,
       <div className="kpi-delta" style={{ color: colors.delta }}>
         {loading ? 'Loading...' : delta}
       </div>
-
-      <style jsx>{`
-        .kpi-card {
-          padding: 20px;
-          border-radius: 12px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .kpi-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .kpi-value {
-          font-size: 28px;
-          font-weight: 700;
-          line-height: 1.2;
-        }
-
-        .kpi-title {
-          font-size: 14px;
-          font-weight: 500;
-          opacity: 0.9;
-        }
-
-        .kpi-delta {
-          font-size: 12px;
-          font-weight: 400;
-          margin-top: 4px;
-        }
-      `}</style>
     </div>
   );
 }
