@@ -6,6 +6,7 @@ import ActivitiesPage from './components/ActivitiesPage';
 import ParticipantsPage from './components/ParticipantsPage';
 import ReportsPage from './components/ReportsPage';
 import AdminPage from './components/AdminPage';
+import Toast from './components/Toast';
 import './App.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
@@ -16,11 +17,19 @@ function App() {
     return localStorage.getItem('selectedTerm') || 'spring-2026';
   });
   const [terms, setTerms] = useState([]);
-  const [settings, setSettings] = useState({ university_name: 'Columbia University' });
+  const [settings, setSettings] = useState({ university_name: 'Columbia University', dashboard_title: 'Test Pilot Dashboard' });
   const [kpis, setKpis] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [verificationRequests, setVerificationRequests] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  // Show toast notification
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // Persist term selection
   useEffect(() => {
@@ -52,19 +61,22 @@ function App() {
   const fetchTermData = useCallback(async () => {
     setLoading(true);
     try {
-      const [kpisRes, programsRes, vrRes] = await Promise.all([
+      const [kpisRes, programsRes, vrRes, studentsRes] = await Promise.all([
         fetch(`${API_URL}/api/kpis?term_id=${selectedTerm}`),
         fetch(`${API_URL}/api/programs?term_id=${selectedTerm}`),
-        fetch(`${API_URL}/api/verification-requests?term_id=${selectedTerm}&status=awaiting_confirmation`)
+        fetch(`${API_URL}/api/verification-requests?term_id=${selectedTerm}&status=awaiting_confirmation`),
+        fetch(`${API_URL}/api/students?term_id=${selectedTerm}`)
       ]);
       
       const kpisData = await kpisRes.json();
       const programsData = await programsRes.json();
       const vrData = await vrRes.json();
+      const studentsData = await studentsRes.json();
       
       setKpis(kpisData);
       setPrograms(programsData);
       setVerificationRequests(vrData);
+      setStudents(studentsData);
     } catch (error) {
       console.error('Error fetching term data:', error);
     } finally {
@@ -86,11 +98,13 @@ function App() {
       });
       
       if (response.ok) {
-        // Refresh data after confirmation
+        const data = await response.json();
+        showToast(`Verified ${data.hours_added} hours successfully!`, 'success');
         fetchTermData();
       }
     } catch (error) {
       console.error('Error confirming verification:', error);
+      showToast('Failed to confirm verification', 'error');
     }
   };
 
@@ -103,10 +117,12 @@ function App() {
       });
       
       if (response.ok) {
+        showToast('Request rejected', 'warning');
         fetchTermData();
       }
     } catch (error) {
       console.error('Error rejecting verification:', error);
+      showToast('Failed to reject verification', 'error');
     }
   };
 
@@ -119,10 +135,12 @@ function App() {
       });
       
       if (response.ok) {
+        showToast('Request flagged for review', 'warning');
         fetchTermData();
       }
     } catch (error) {
       console.error('Error flagging verification:', error);
+      showToast('Failed to flag verification', 'error');
     }
   };
 
@@ -137,10 +155,16 @@ function App() {
       if (response.ok) {
         const data = await response.json();
         setSettings(data);
+        showToast('Settings updated', 'success');
       }
     } catch (error) {
       console.error('Error updating settings:', error);
+      showToast('Failed to update settings', 'error');
     }
+  };
+
+  const handleExport = (type) => {
+    showToast(`${type} exported successfully!`, 'success');
   };
 
   const renderPage = () => {
@@ -155,15 +179,28 @@ function App() {
             onReject={handleReject}
             onFlag={handleFlag}
             loading={loading}
-            universityName={settings.university_name}
+            settings={settings}
+            selectedTerm={selectedTerm}
           />
         );
       case 'activities':
         return <ActivitiesPage selectedTerm={selectedTerm} />;
       case 'participants':
-        return <ParticipantsPage selectedTerm={selectedTerm} />;
+        return (
+          <ParticipantsPage 
+            selectedTerm={selectedTerm} 
+            students={students}
+            loading={loading}
+          />
+        );
       case 'reports':
-        return <ReportsPage selectedTerm={selectedTerm} terms={terms} />;
+        return (
+          <ReportsPage 
+            selectedTerm={selectedTerm} 
+            terms={terms}
+            onExport={handleExport}
+          />
+        );
       case 'admin':
         return (
           <AdminPage 
@@ -192,6 +229,7 @@ function App() {
           {renderPage()}
         </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
