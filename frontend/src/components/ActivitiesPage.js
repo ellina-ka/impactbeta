@@ -1,381 +1,425 @@
-import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, ChevronUp, Eye, Check, X, Flag, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Check, X, Flag, Clock, MapPin, FileText, Calendar, User } from 'lucide-react';
 import './styles.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
-function ActivitiesPage({ selectedTerm, onRefresh }) {
-  const [logs, setLogs] = useState([]);
+const REJECTION_REASONS = [
+  { value: 'not_eligible', label: 'Not Eligible' },
+  { value: 'insufficient_evidence', label: 'Insufficient Evidence' },
+  { value: 'suspicious', label: 'Suspicious Activity' },
+  { value: 'duplicate', label: 'Duplicate Entry' },
+];
+
+function ActivitiesPage({ selectedTerm, onActionComplete }) {
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortField, setSortField] = useState('date');
-  const [sortDir, setSortDir] = useState('desc');
-  const [selectedLog, setSelectedLog] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [actionModal, setActionModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [flagReason, setFlagReason] = useState('');
+  const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [selectedTerm]);
-
-  const fetchLogs = async () => {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/service-logs?term_id=${selectedTerm}`);
-      const data = await response.json();
-      setLogs(data);
+      // Fetch all verification requests (pending + we'll also get flagged logs)
+      const [vrRes, logsRes] = await Promise.all([
+        fetch(`${API_URL}/api/verification-requests?term_id=${selectedTerm}`),
+        fetch(`${API_URL}/api/service-logs?term_id=${selectedTerm}`)
+      ]);
+      
+      const vrData = await vrRes.json();
+      const logsData = await logsRes.json();
+      
+      // Filter to pending requests only (awaiting_confirmation)
+      const pendingRequests = vrData.filter(vr => vr.status === 'awaiting_confirmation');
+      
+      // Also get flagged logs that don't have pending VRs
+      const flaggedLogs = logsData.filter(log => log.status === 'flagged');
+      
+      // Combine and format
+      const combined = [
+        ...pendingRequests.map(vr => ({
+          ...vr,
+          type: 'pending',
+          sortPriority: 1
+        })),
+        ...flaggedLogs.map(log => ({
+          request_id: `flagged-${log.log_id}`,
+          log_id: log.log_id,
+          student_id: log.student_id,
+          program_id: log.program_id,
+          student_name: log.student_name,
+          student_email: log.student_email,
+          student_avatar: log.student_name?.split(' ').map(n => n[0]).join('') || '?',
+          program_name: log.program_name,
+          hours: log.hours,
+          log_date: log.date,
+          evidence_tier: log.evidence_tier,
+          description: log.description,
+          ngo_name: log.description,
+          status: 'flagged',
+          type: 'flagged',
+          sortPriority: 0,
+          created_at: log.created_at
+        }))
+      ].sort((a, b) => a.sortPriority - b.sortPriority);
+      
+      setRequests(combined);
+      
+      // Auto-select first if none selected
+      if (combined.length > 0 && !selectedRequest) {
+        setSelectedRequest(combined[0]);
+      }
     } catch (error) {
-      console.error('Error fetching logs:', error);
+      console.error('Error fetching requests:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTerm, selectedRequest]);
 
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('desc');
-    }
-  };
+  useEffect(() => {
+    fetchRequests();
+  }, [selectedTerm]);
 
-  const handleVerify = async (logId) => {
+  const handleConfirm = async (request) => {
+    if (request.type === 'flagged') return; // Can't confirm flagged items directly
+    
+    setProcessing(true);
     try {
-      // Find the verification request for this log
-      const vrResponse = await fetch(`${API_URL}/api/verification-requests?term_id=${selectedTerm}`);
-      const vrs = await vrResponse.json();
-      const vr = vrs.find(v => v.log_id === logId);
+      const response = await fetch(`${API_URL}/api/verification-requests/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: request.request_id })
+      });
       
-      if (vr) {
-        await fetch(`${API_URL}/api/verification-requests/confirm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: vr.request_id })
-        });
-        fetchLogs();
+      if (response.ok) {
+        // Remove from list and select next
+        const newRequests = requests.filter(r => r.request_id !== request.request_id);
+        setRequests(newRequests);
+        setSelectedRequest(newRequests[0] || null);
+        if (onActionComplete) onActionComplete('confirm', request.hours);
       }
     } catch (error) {
-      console.error('Error verifying:', error);
+      console.error('Error confirming:', error);
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const handleReject = async (logId) => {
-    if (!rejectReason) return;
+  const handleReject = async () => {
+    if (!rejectReason || !selectedRequest) return;
+    
+    setProcessing(true);
     try {
-      const vrResponse = await fetch(`${API_URL}/api/verification-requests?term_id=${selectedTerm}`);
-      const vrs = await vrResponse.json();
-      const vr = vrs.find(v => v.log_id === logId);
+      const response = await fetch(`${API_URL}/api/verification-requests/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: selectedRequest.request_id, reason: rejectReason })
+      });
       
-      if (vr) {
-        await fetch(`${API_URL}/api/verification-requests/reject`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: vr.request_id, reason: rejectReason })
-        });
+      if (response.ok) {
+        const newRequests = requests.filter(r => r.request_id !== selectedRequest.request_id);
+        setRequests(newRequests);
+        setSelectedRequest(newRequests[0] || null);
         setActionModal(null);
         setRejectReason('');
-        fetchLogs();
+        if (onActionComplete) onActionComplete('reject');
       }
     } catch (error) {
       console.error('Error rejecting:', error);
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const handleFlag = async (logId) => {
-    if (!flagReason) return;
+  const handleFlag = async () => {
+    if (!flagReason || !selectedRequest) return;
+    
+    setProcessing(true);
     try {
-      const vrResponse = await fetch(`${API_URL}/api/verification-requests?term_id=${selectedTerm}`);
-      const vrs = await vrResponse.json();
-      const vr = vrs.find(v => v.log_id === logId);
+      const response = await fetch(`${API_URL}/api/verification-requests/flag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: selectedRequest.request_id, reason: flagReason })
+      });
       
-      if (vr) {
-        await fetch(`${API_URL}/api/verification-requests/flag`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: vr.request_id, reason: flagReason })
-        });
+      if (response.ok) {
+        const newRequests = requests.filter(r => r.request_id !== selectedRequest.request_id);
+        setRequests(newRequests);
+        setSelectedRequest(newRequests[0] || null);
         setActionModal(null);
         setFlagReason('');
-        fetchLogs();
+        if (onActionComplete) onActionComplete('flag');
       }
     } catch (error) {
       console.error('Error flagging:', error);
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const filteredLogs = logs
-    .filter(log => {
-      const matchesSearch = 
-        log.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.program_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      let aVal = a[sortField];
-      let bVal = b[sortField];
-      if (sortField === 'date') {
-        aVal = new Date(aVal);
-        bVal = new Date(bVal);
-      }
-      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      confirmed: { label: 'Confirmed', className: 'status-confirmed' },
-      pending: { label: 'Pending', className: 'status-pending' },
-      rejected: { label: 'Rejected', className: 'status-rejected' },
-      flagged: { label: 'Flagged', className: 'status-flagged' }
-    };
-    const badge = badges[status] || badges.pending;
-    return <span className={`activity-status-badge ${badge.className}`}>{badge.label}</span>;
+  const getStatusBadge = (status, type) => {
+    if (type === 'flagged' || status === 'flagged') {
+      return <span className="inbox-status-badge flagged">Flagged</span>;
+    }
+    return <span className="inbox-status-badge pending">Pending Review</span>;
   };
 
   const getEvidenceBadge = (tier) => {
     if (tier === 'org_confirmed') {
-      return <span className="evidence-badge org">Org-confirmed</span>;
+      return <span className="inbox-evidence-badge org">Org-confirmed</span>;
     }
-    return <span className="evidence-badge self">Self-reported</span>;
+    return <span className="inbox-evidence-badge self">Self-reported</span>;
   };
 
-  const SortIcon = ({ field }) => {
-    if (sortField !== field) return null;
-    return sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
-  };
-
-  const statusCounts = {
-    all: logs.length,
-    pending: logs.filter(l => l.status === 'pending').length,
-    confirmed: logs.filter(l => l.status === 'confirmed').length,
-    rejected: logs.filter(l => l.status === 'rejected').length,
-    flagged: logs.filter(l => l.status === 'flagged').length
-  };
+  const pendingCount = requests.filter(r => r.type === 'pending').length;
+  const flaggedCount = requests.filter(r => r.type === 'flagged').length;
 
   return (
-    <div className="page activities-page" data-testid="activities-page">
-      <div className="page-header">
+    <div className="page verification-inbox" data-testid="activities-page">
+      {/* Header */}
+      <div className="inbox-header">
         <div>
-          <h1 className="page-title">Activities</h1>
-          <p className="page-subtitle">Manage and verify all service hour logs</p>
+          <h1 className="page-title">Verification Inbox</h1>
+          <p className="page-subtitle">Review and verify student service hours</p>
         </div>
-        <div className="header-stats">
-          <div className="stat-item">
-            <span className="stat-value">{logs.length}</span>
-            <span className="stat-label">Total Logs</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-value">{statusCounts.pending}</span>
+        <div className="inbox-stats">
+          <div className="inbox-stat">
+            <span className="stat-count pending">{pendingCount}</span>
             <span className="stat-label">Pending</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-value">{statusCounts.confirmed}</span>
-            <span className="stat-label">Confirmed</span>
+          <div className="inbox-stat">
+            <span className="stat-count flagged">{flaggedCount}</span>
+            <span className="stat-label">Flagged</span>
           </div>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="activities-toolbar">
-        <div className="search-box">
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Search by student, program, or description..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            data-testid="activities-search"
-          />
-        </div>
-        
-        <div className="filter-group">
-          <Filter size={16} />
-          <select 
-            value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)}
-            data-testid="status-filter"
-          >
-            <option value="all">All Status ({statusCounts.all})</option>
-            <option value="pending">Pending ({statusCounts.pending})</option>
-            <option value="confirmed">Confirmed ({statusCounts.confirmed})</option>
-            <option value="rejected">Rejected ({statusCounts.rejected})</option>
-            <option value="flagged">Flagged ({statusCounts.flagged})</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="activities-table-container">
-        {loading ? (
-          <div className="loading-state">Loading activities...</div>
-        ) : filteredLogs.length === 0 ? (
-          <div className="empty-state">No activities found matching your criteria</div>
-        ) : (
-          <table className="activities-table" data-testid="activities-table">
-            <thead>
-              <tr>
-                <th onClick={() => handleSort('student_name')} className="sortable">
-                  Student <SortIcon field="student_name" />
-                </th>
-                <th onClick={() => handleSort('program_name')} className="sortable">
-                  Program <SortIcon field="program_name" />
-                </th>
-                <th onClick={() => handleSort('date')} className="sortable">
-                  Date <SortIcon field="date" />
-                </th>
-                <th onClick={() => handleSort('hours')} className="sortable">
-                  Hours <SortIcon field="hours" />
-                </th>
-                <th>Evidence</th>
-                <th onClick={() => handleSort('status')} className="sortable">
-                  Status <SortIcon field="status" />
-                </th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLogs.map((log) => (
-                <tr key={log.log_id} data-testid={`activity-row-${log.log_id}`}>
-                  <td>
-                    <div className="student-cell">
-                      <div className="student-avatar-small">
-                        {log.student_name?.split(' ').map(n => n[0]).join('') || '?'}
-                      </div>
-                      <div>
-                        <div className="student-name">{log.student_name}</div>
-                        <div className="student-email">{log.student_email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="program-tag-small">{log.program_name}</span>
-                  </td>
-                  <td className="date-cell">{log.date}</td>
-                  <td className="hours-cell">{log.hours}h</td>
-                  <td>{getEvidenceBadge(log.evidence_tier)}</td>
-                  <td>{getStatusBadge(log.status)}</td>
-                  <td>
-                    <div className="action-buttons">
-                      <button 
-                        className="action-btn view"
-                        onClick={() => setSelectedLog(log)}
-                        title="View Details"
-                        data-testid={`view-btn-${log.log_id}`}
-                      >
-                        <Eye size={14} />
-                      </button>
-                      {log.status === 'pending' && (
-                        <>
-                          <button 
-                            className="action-btn verify"
-                            onClick={() => handleVerify(log.log_id)}
-                            title="Verify"
-                            data-testid={`verify-btn-${log.log_id}`}
-                          >
-                            <Check size={14} />
-                          </button>
-                          <button 
-                            className="action-btn reject"
-                            onClick={() => setActionModal({ type: 'reject', log })}
-                            title="Reject"
-                            data-testid={`reject-btn-${log.log_id}`}
-                          >
-                            <X size={14} />
-                          </button>
-                          <button 
-                            className="action-btn flag"
-                            onClick={() => setActionModal({ type: 'flag', log })}
-                            title="Flag"
-                            data-testid={`flag-btn-${log.log_id}`}
-                          >
-                            <Flag size={14} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* View Log Modal */}
-      {selectedLog && (
-        <div className="modal-overlay" onClick={() => setSelectedLog(null)}>
-          <div className="modal log-modal" onClick={(e) => e.stopPropagation()} data-testid="log-detail-modal">
-            <div className="modal-header">
-              <h3>Activity Details</h3>
-              <button className="close-btn" onClick={() => setSelectedLog(null)}>
-                <X size={20} />
-              </button>
+      {/* Two-column layout */}
+      <div className="inbox-container">
+        {/* Queue List */}
+        <div className="inbox-queue" data-testid="verification-queue">
+          <div className="queue-header">
+            <h3>Review Queue</h3>
+            <span className="queue-count">{requests.length} items</span>
+          </div>
+          
+          {loading ? (
+            <div className="queue-loading">Loading...</div>
+          ) : requests.length === 0 ? (
+            <div className="queue-empty">
+              <Check size={32} />
+              <p>All caught up!</p>
+              <span>No pending verifications</span>
             </div>
-            <div className="modal-body">
-              <div className="log-detail-grid">
-                <div className="log-detail-item">
-                  <label>Student</label>
-                  <p>{selectedLog.student_name}</p>
+          ) : (
+            <div className="queue-list">
+              {requests.map((request) => (
+                <div
+                  key={request.request_id}
+                  className={`queue-item ${selectedRequest?.request_id === request.request_id ? 'selected' : ''} ${request.type}`}
+                  onClick={() => setSelectedRequest(request)}
+                  data-testid={`queue-item-${request.request_id}`}
+                >
+                  <div className="queue-item-main">
+                    <div className="queue-avatar">
+                      {request.student_avatar}
+                    </div>
+                    <div className="queue-info">
+                      <div className="queue-student">{request.student_name}</div>
+                      <div className="queue-meta">
+                        <span className="queue-program">{request.program_name}</span>
+                        <span className="queue-date">{request.log_date}</span>
+                      </div>
+                    </div>
+                    <div className="queue-right">
+                      <span className="queue-hours">{request.hours}h</span>
+                      {getEvidenceBadge(request.evidence_tier)}
+                    </div>
+                  </div>
+                  <div className="queue-item-footer">
+                    {getStatusBadge(request.status, request.type)}
+                    {request.type === 'pending' && (
+                      <div className="queue-actions">
+                        <button
+                          className="queue-action-btn confirm"
+                          onClick={(e) => { e.stopPropagation(); handleConfirm(request); }}
+                          disabled={processing}
+                          title="Confirm"
+                          data-testid={`confirm-${request.request_id}`}
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          className="queue-action-btn reject"
+                          onClick={(e) => { e.stopPropagation(); setSelectedRequest(request); setActionModal('reject'); }}
+                          disabled={processing}
+                          title="Reject"
+                          data-testid={`reject-${request.request_id}`}
+                        >
+                          <X size={14} />
+                        </button>
+                        <button
+                          className="queue-action-btn flag"
+                          onClick={(e) => { e.stopPropagation(); setSelectedRequest(request); setActionModal('flag'); }}
+                          disabled={processing}
+                          title="Flag for Review"
+                          data-testid={`flag-${request.request_id}`}
+                        >
+                          <Flag size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="log-detail-item">
-                  <label>Email</label>
-                  <p>{selectedLog.student_email}</p>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Detail Panel */}
+        <div className="inbox-detail" data-testid="detail-panel">
+          {!selectedRequest ? (
+            <div className="detail-empty">
+              <FileText size={48} />
+              <p>Select an item to view details</p>
+            </div>
+          ) : (
+            <>
+              <div className="detail-header">
+                <div className="detail-student">
+                  <div className="detail-avatar">{selectedRequest.student_avatar}</div>
+                  <div>
+                    <h3>{selectedRequest.student_name}</h3>
+                    <p>{selectedRequest.student_email}</p>
+                  </div>
                 </div>
-                <div className="log-detail-item">
-                  <label>Program</label>
-                  <p>{selectedLog.program_name}</p>
+                {getStatusBadge(selectedRequest.status, selectedRequest.type)}
+              </div>
+
+              <div className="detail-body">
+                {/* Activity Info */}
+                <div className="detail-section">
+                  <h4>Activity Details</h4>
+                  <div className="detail-grid">
+                    <div className="detail-item">
+                      <Clock size={16} />
+                      <div>
+                        <label>Hours Logged</label>
+                        <p>{selectedRequest.hours} hours</p>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <Calendar size={16} />
+                      <div>
+                        <label>Date</label>
+                        <p>{selectedRequest.log_date}</p>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <User size={16} />
+                      <div>
+                        <label>Program</label>
+                        <p>{selectedRequest.program_name}</p>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <MapPin size={16} />
+                      <div>
+                        <label>NGO / Location</label>
+                        <p>{selectedRequest.ngo_name || 'Not specified'}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="log-detail-item">
-                  <label>Date</label>
-                  <p>{selectedLog.date}</p>
+
+                {/* Description */}
+                <div className="detail-section">
+                  <h4>Description</h4>
+                  <p className="detail-description">
+                    {selectedRequest.description || selectedRequest.action_description || 'No description provided'}
+                  </p>
                 </div>
-                <div className="log-detail-item">
-                  <label>Hours</label>
-                  <p>{selectedLog.hours} hours</p>
+
+                {/* Evidence */}
+                <div className="detail-section">
+                  <h4>Evidence</h4>
+                  <div className="evidence-box">
+                    {getEvidenceBadge(selectedRequest.evidence_tier)}
+                    <p className="evidence-note">
+                      {selectedRequest.evidence_tier === 'org_confirmed' 
+                        ? 'This activity has been confirmed by the partner organization.'
+                        : 'This activity is self-reported by the student. Consider requesting additional verification.'}
+                    </p>
+                    <div className="evidence-placeholder">
+                      <FileText size={24} />
+                      <span>No attachments uploaded</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="log-detail-item">
-                  <label>Status</label>
-                  <p>{getStatusBadge(selectedLog.status)}</p>
-                </div>
-                <div className="log-detail-item full-width">
-                  <label>Description</label>
-                  <p>{selectedLog.description}</p>
-                </div>
-                <div className="log-detail-item">
-                  <label>Evidence Tier</label>
-                  <p>{getEvidenceBadge(selectedLog.evidence_tier)}</p>
-                </div>
-                <div className="log-detail-item">
-                  <label>Created</label>
-                  <p>{new Date(selectedLog.created_at).toLocaleDateString()}</p>
+
+                {/* Timestamps */}
+                <div className="detail-section">
+                  <h4>Timestamps</h4>
+                  <div className="timestamps">
+                    <div className="timestamp-item">
+                      <span className="timestamp-label">Submitted</span>
+                      <span className="timestamp-value">
+                        {selectedRequest.created_at 
+                          ? new Date(selectedRequest.created_at).toLocaleString() 
+                          : 'Unknown'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+
+              {/* Action Buttons */}
+              {selectedRequest.type === 'pending' && (
+                <div className="detail-actions">
+                  <button
+                    className="detail-action-btn reject"
+                    onClick={() => setActionModal('reject')}
+                    disabled={processing}
+                  >
+                    <X size={18} /> Reject
+                  </button>
+                  <button
+                    className="detail-action-btn flag"
+                    onClick={() => setActionModal('flag')}
+                    disabled={processing}
+                  >
+                    <Flag size={18} /> Flag
+                  </button>
+                  <button
+                    className="detail-action-btn confirm"
+                    onClick={() => handleConfirm(selectedRequest)}
+                    disabled={processing}
+                  >
+                    <Check size={18} /> Confirm Hours
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Reject Modal */}
-      {actionModal?.type === 'reject' && (
+      {actionModal === 'reject' && (
         <div className="modal-overlay" onClick={() => setActionModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} data-testid="reject-activity-modal">
+          <div className="modal" onClick={(e) => e.stopPropagation()} data-testid="reject-modal">
             <div className="modal-header">
-              <h3>Reject Activity</h3>
+              <h3>Reject Verification</h3>
               <button className="close-btn" onClick={() => setActionModal(null)}>
                 <X size={20} />
               </button>
             </div>
             <div className="modal-body">
               <p className="modal-context">
-                Rejecting activity for <strong>{actionModal.log.student_name}</strong> - {actionModal.log.hours}h on {actionModal.log.date}
+                Rejecting <strong>{selectedRequest?.hours}h</strong> for <strong>{selectedRequest?.student_name}</strong>
               </p>
               <label>Select a reason for rejection:</label>
               <select 
@@ -384,21 +428,21 @@ function ActivitiesPage({ selectedTerm, onRefresh }) {
                 data-testid="reject-reason-select"
               >
                 <option value="">Select reason...</option>
-                <option value="not_eligible">Not Eligible</option>
-                <option value="insufficient_evidence">Insufficient Evidence</option>
-                <option value="suspicious">Suspicious Activity</option>
-                <option value="duplicate">Duplicate Entry</option>
+                {REJECTION_REASONS.map((reason) => (
+                  <option key={reason.value} value={reason.value}>
+                    {reason.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="modal-footer">
               <button className="cancel-btn" onClick={() => setActionModal(null)}>Cancel</button>
               <button 
                 className="submit-btn reject" 
-                onClick={() => handleReject(actionModal.log.log_id)}
-                disabled={!rejectReason}
-                data-testid="confirm-reject-btn"
+                onClick={handleReject}
+                disabled={!rejectReason || processing}
               >
-                Reject
+                {processing ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
           </div>
@@ -406,9 +450,9 @@ function ActivitiesPage({ selectedTerm, onRefresh }) {
       )}
 
       {/* Flag Modal */}
-      {actionModal?.type === 'flag' && (
+      {actionModal === 'flag' && (
         <div className="modal-overlay" onClick={() => setActionModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} data-testid="flag-activity-modal">
+          <div className="modal" onClick={(e) => e.stopPropagation()} data-testid="flag-modal">
             <div className="modal-header">
               <h3>Flag for Review</h3>
               <button className="close-btn" onClick={() => setActionModal(null)}>
@@ -417,13 +461,13 @@ function ActivitiesPage({ selectedTerm, onRefresh }) {
             </div>
             <div className="modal-body">
               <p className="modal-context">
-                Flagging activity for <strong>{actionModal.log.student_name}</strong> - {actionModal.log.hours}h on {actionModal.log.date}
+                Flagging <strong>{selectedRequest?.hours}h</strong> for <strong>{selectedRequest?.student_name}</strong>
               </p>
               <label>Enter reason for flagging:</label>
               <textarea
                 value={flagReason}
                 onChange={(e) => setFlagReason(e.target.value)}
-                placeholder="Describe why this activity needs review..."
+                placeholder="Describe why this needs additional review..."
                 rows={3}
                 data-testid="flag-reason-input"
               />
@@ -432,11 +476,10 @@ function ActivitiesPage({ selectedTerm, onRefresh }) {
               <button className="cancel-btn" onClick={() => setActionModal(null)}>Cancel</button>
               <button 
                 className="submit-btn flag" 
-                onClick={() => handleFlag(actionModal.log.log_id)}
-                disabled={!flagReason}
-                data-testid="confirm-flag-btn"
+                onClick={handleFlag}
+                disabled={!flagReason || processing}
               >
-                Flag
+                {processing ? 'Flagging...' : 'Flag'}
               </button>
             </div>
           </div>
