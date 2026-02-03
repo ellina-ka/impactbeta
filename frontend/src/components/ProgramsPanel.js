@@ -1,10 +1,12 @@
 import React from 'react';
-import { Heart, Leaf, HandHeart, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Heart, Leaf, Users, ChevronRight, MoreHorizontal, Sun } from 'lucide-react';
 
 const iconMap = {
   heart: Heart,
   leaf: Leaf,
-  'hands-helping': HandHeart,
+  'hands-helping': Users,
+  sun: Sun,
+  users: Users,
   default: Heart
 };
 
