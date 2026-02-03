@@ -1,23 +1,32 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, ChevronUp, X, Clock, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, ExternalLink, Calendar } from 'lucide-react';
 import './styles.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
-function ParticipantsPage({ selectedTerm, students, loading }) {
+// Term requirements - could come from backend in future
+const TERM_REQUIREMENTS = {
+  'spring-2026': 20,
+  'fall-2025': 20,
+  'summer-2026': 10
+};
+
+function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivities }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState('name');
-  const [sortDir, setSortDir] = useState('asc');
+  const [sortField, setSortField] = useState('risk_score');
+  const [sortDir, setSortDir] = useState('desc');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentDetails, setStudentDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const requiredHours = TERM_REQUIREMENTS[selectedTerm] || 20;
 
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortDir('asc');
+      setSortDir(field === 'risk_score' ? 'desc' : 'asc');
     }
   };
 
@@ -40,7 +49,36 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
     setStudentDetails(null);
   };
 
-  const filteredStudents = students
+  // Enrich students with risk calculation
+  const enrichedStudents = students.map(student => {
+    const progress = (student.verified_hours / requiredHours) * 100;
+    let riskStatus = 'on_track';
+    let riskScore = 0;
+    
+    if (progress >= 75) {
+      riskStatus = 'on_track';
+      riskScore = 0;
+    } else if (progress >= 50) {
+      riskStatus = 'on_track';
+      riskScore = 1;
+    } else if (progress >= 25) {
+      riskStatus = 'needs_attention';
+      riskScore = 2;
+    } else {
+      riskStatus = 'at_risk';
+      riskScore = 3;
+    }
+    
+    return {
+      ...student,
+      progress,
+      riskStatus,
+      riskScore,
+      requiredHours
+    };
+  });
+
+  const filteredStudents = enrichedStudents
     .filter(s => 
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -55,14 +93,20 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
       return 0;
     });
 
-  const getStatusBadge = (status) => {
+  const getRiskBadge = (status) => {
     const badges = {
-      on_track: { label: 'On Track', className: 'status-on-track' },
-      needs_attention: { label: 'Needs Attention', className: 'status-needs-attention' },
-      at_risk: { label: 'At Risk', className: 'status-at-risk' }
+      on_track: { label: 'On Track', className: 'risk-on-track', icon: CheckCircle },
+      needs_attention: { label: 'Needs Attention', className: 'risk-needs-attention', icon: Clock },
+      at_risk: { label: 'At Risk', className: 'risk-at-risk', icon: AlertTriangle }
     };
     const badge = badges[status] || badges.at_risk;
-    return <span className={`status-badge ${badge.className}`}>{badge.label}</span>;
+    const Icon = badge.icon;
+    return (
+      <span className={`risk-badge ${badge.className}`}>
+        <Icon size={12} />
+        {badge.label}
+      </span>
+    );
   };
 
   const SortIcon = ({ field }) => {
@@ -70,25 +114,40 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
     return sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
 
+  const atRiskCount = enrichedStudents.filter(s => s.riskStatus === 'at_risk').length;
+  const needsAttentionCount = enrichedStudents.filter(s => s.riskStatus === 'needs_attention').length;
+  const onTrackCount = enrichedStudents.filter(s => s.riskStatus === 'on_track').length;
+
+  const getLastActivityDate = (student) => {
+    // This would come from the student data ideally
+    // For now we'll show a placeholder or computed value
+    return student.last_activity || '—';
+  };
+
   return (
     <div className="page participants-page" data-testid="participants-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Participants</h1>
-          <p className="page-subtitle">Track student progress and service hours</p>
+          <h1 className="page-title">Progress & Risk</h1>
+          <p className="page-subtitle">
+            Track student progress toward {requiredHours}h requirement
+          </p>
         </div>
         <div className="header-stats">
-          <div className="stat-item">
-            <span className="stat-value">{students.length}</span>
-            <span className="stat-label">Total Students</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-value">{students.filter(s => s.status === 'on_track').length}</span>
-            <span className="stat-label">On Track</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-value">{students.filter(s => s.status === 'at_risk').length}</span>
+          <div className="stat-item risk-stat at-risk">
+            <AlertTriangle size={16} />
+            <span className="stat-value">{atRiskCount}</span>
             <span className="stat-label">At Risk</span>
+          </div>
+          <div className="stat-item risk-stat needs-attention">
+            <Clock size={16} />
+            <span className="stat-value">{needsAttentionCount}</span>
+            <span className="stat-label">Needs Attention</span>
+          </div>
+          <div className="stat-item risk-stat on-track">
+            <CheckCircle size={16} />
+            <span className="stat-value">{onTrackCount}</span>
+            <span className="stat-label">On Track</span>
           </div>
         </div>
       </div>
@@ -105,6 +164,10 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
             data-testid="participants-search"
           />
         </div>
+        <div className="requirement-badge">
+          <Clock size={14} />
+          <span>Requirement: {requiredHours}h per student</span>
+        </div>
       </div>
 
       {/* Table */}
@@ -112,21 +175,22 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
         {loading ? (
           <div className="loading-state">Loading participants...</div>
         ) : (
-          <table className="participants-table" data-testid="participants-table">
+          <table className="participants-table progress-table" data-testid="participants-table">
             <thead>
               <tr>
                 <th onClick={() => handleSort('name')} className="sortable">
                   Student <SortIcon field="name" />
                 </th>
-                <th>Program</th>
-                <th onClick={() => handleSort('total_hours')} className="sortable">
-                  Total Hours <SortIcon field="total_hours" />
+                <th>Programs</th>
+                <th onClick={() => handleSort('progress')} className="sortable">
+                  Progress <SortIcon field="progress" />
                 </th>
-                <th onClick={() => handleSort('percent_verified')} className="sortable">
-                  % Verified <SortIcon field="percent_verified" />
+                <th onClick={() => handleSort('verified_hours')} className="sortable">
+                  Verified <SortIcon field="verified_hours" />
                 </th>
-                <th onClick={() => handleSort('status')} className="sortable">
-                  Status <SortIcon field="status" />
+                <th>Last Activity</th>
+                <th onClick={() => handleSort('risk_score')} className="sortable">
+                  Risk Status <SortIcon field="risk_score" />
                 </th>
               </tr>
             </thead>
@@ -149,26 +213,33 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
                   </td>
                   <td>
                     <div className="program-tags">
-                      {student.program_names.map((name, i) => (
+                      {student.program_names?.map((name, i) => (
                         <span key={i} className="program-tag-small">{name}</span>
                       ))}
                     </div>
                   </td>
                   <td>
-                    <span className="hours-display">{student.total_hours}h</span>
-                  </td>
-                  <td>
-                    <div className="progress-cell">
-                      <div className="progress-bar">
-                        <div 
-                          className="progress-fill" 
-                          style={{ width: `${Math.min(student.percent_verified, 100)}%` }}
-                        />
+                    <div className="progress-cell-detailed">
+                      <div className="progress-bar-container">
+                        <div className="progress-bar-bg">
+                          <div 
+                            className={`progress-bar-fill ${student.riskStatus}`}
+                            style={{ width: `${Math.min(student.progress, 100)}%` }}
+                          />
+                        </div>
+                        <span className="progress-text">
+                          {student.verified_hours}h / {requiredHours}h
+                        </span>
                       </div>
-                      <span>{student.percent_verified}%</span>
                     </div>
                   </td>
-                  <td>{getStatusBadge(student.status)}</td>
+                  <td>
+                    <span className="verified-hours">{student.verified_hours}h</span>
+                  </td>
+                  <td className="last-activity-cell">
+                    {getLastActivityDate(student)}
+                  </td>
+                  <td>{getRiskBadge(student.riskStatus)}</td>
                 </tr>
               ))}
             </tbody>
@@ -176,14 +247,14 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
         )}
       </div>
 
-      {/* Student Details Side Panel */}
+      {/* Student Profile Side Panel - Read Only */}
       {selectedStudent && (
         <div className="side-panel-overlay" onClick={closeDetails}>
-          <div className="side-panel" onClick={(e) => e.stopPropagation()} data-testid="student-details-panel">
+          <div className="side-panel profile-panel" onClick={(e) => e.stopPropagation()} data-testid="student-profile-panel">
             <div className="side-panel-header">
-              <h3>Student Details</h3>
+              <h3>Student Profile</h3>
               <button className="close-btn" onClick={closeDetails}>
-                <X size={20} />
+                <span>×</span>
               </button>
             </div>
             
@@ -192,61 +263,110 @@ function ParticipantsPage({ selectedTerm, students, loading }) {
             ) : studentDetails ? (
               <div className="side-panel-content">
                 {/* Student Info */}
-                <div className="student-profile">
-                  <div className="profile-avatar">{studentDetails.avatar}</div>
+                <div className="profile-header">
+                  <div className="profile-avatar-large">{studentDetails.avatar}</div>
                   <div className="profile-info">
                     <h4>{studentDetails.name}</h4>
                     <p>{studentDetails.email}</p>
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="detail-stats">
-                  <div className="detail-stat">
-                    <Clock size={18} />
-                    <div>
-                      <span className="stat-value">{studentDetails.total_hours}h</span>
-                      <span className="stat-label">Total Hours</span>
+                {/* Progress Summary */}
+                <div className="progress-summary">
+                  <h5>Progress Summary</h5>
+                  <div className="progress-visual">
+                    <div className="progress-ring">
+                      <svg viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" className="progress-ring-bg" />
+                        <circle 
+                          cx="50" cy="50" r="45" 
+                          className="progress-ring-fill"
+                          style={{ 
+                            strokeDasharray: `${Math.min((studentDetails.verified_hours / requiredHours) * 283, 283)} 283`
+                          }}
+                        />
+                      </svg>
+                      <div className="progress-ring-text">
+                        <span className="ring-value">{Math.round((studentDetails.verified_hours / requiredHours) * 100)}%</span>
+                        <span className="ring-label">Complete</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="detail-stat">
-                    <CheckCircle size={18} />
-                    <div>
-                      <span className="stat-value">{studentDetails.verified_hours}h</span>
-                      <span className="stat-label">Verified</span>
+                    <div className="progress-breakdown">
+                      <div className="breakdown-item">
+                        <span className="breakdown-label">Verified Hours</span>
+                        <span className="breakdown-value verified">{studentDetails.verified_hours}h</span>
+                      </div>
+                      <div className="breakdown-item">
+                        <span className="breakdown-label">Pending Hours</span>
+                        <span className="breakdown-value pending">{studentDetails.pending_hours || 0}h</span>
+                      </div>
+                      <div className="breakdown-item">
+                        <span className="breakdown-label">Required</span>
+                        <span className="breakdown-value">{requiredHours}h</span>
+                      </div>
+                      <div className="breakdown-item">
+                        <span className="breakdown-label">Remaining</span>
+                        <span className="breakdown-value remaining">
+                          {Math.max(requiredHours - studentDetails.verified_hours, 0)}h
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Programs */}
-                <div className="detail-section">
-                  <h5>Programs</h5>
-                  <div className="program-list">
-                    {studentDetails.program_names.map((name, i) => (
+                <div className="profile-section">
+                  <h5>Enrolled Programs</h5>
+                  <div className="program-chips">
+                    {studentDetails.program_names?.map((name, i) => (
                       <span key={i} className="program-chip">{name}</span>
                     ))}
                   </div>
                 </div>
 
-                {/* Service Logs */}
-                <div className="detail-section">
-                  <h5>Service Logs</h5>
-                  <div className="logs-list">
-                    {studentDetails.logs && studentDetails.logs.map((log) => (
-                      <div key={log.log_id} className={`log-item log-${log.status}`}>
-                        <div className="log-header">
-                          <span className="log-date">{log.date}</span>
-                          <span className={`log-status ${log.status}`}>{log.status}</span>
+                {/* Service Logs - Read Only */}
+                <div className="profile-section">
+                  <div className="section-header-row">
+                    <h5>Service Logs</h5>
+                    <span className="log-count">{studentDetails.logs?.length || 0} entries</span>
+                  </div>
+                  <div className="logs-list read-only">
+                    {studentDetails.logs?.slice(0, 5).map((log) => (
+                      <div key={log.log_id} className={`log-item-compact log-${log.status}`}>
+                        <div className="log-item-header">
+                          <span className="log-program">{log.program_name}</span>
+                          <span className={`log-status-mini ${log.status}`}>{log.status}</span>
                         </div>
-                        <div className="log-description">{log.description}</div>
-                        <div className="log-meta">
-                          <span>{log.hours}h</span>
-                          <span>{log.program_name}</span>
+                        <div className="log-item-body">
+                          <span className="log-description-mini">{log.description}</span>
+                        </div>
+                        <div className="log-item-footer">
+                          <span className="log-date-mini">
+                            <Calendar size={12} /> {log.date}
+                          </span>
+                          <span className="log-hours-mini">{log.hours}h</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                {/* Link to Activities */}
+                {studentDetails.logs?.some(l => l.status === 'pending') && (
+                  <div className="profile-action">
+                    <button 
+                      className="link-to-activities"
+                      onClick={() => {
+                        closeDetails();
+                        if (onNavigateToActivities) onNavigateToActivities();
+                      }}
+                      data-testid="view-pending-link"
+                    >
+                      <ExternalLink size={16} />
+                      View pending logs in Activities
+                    </button>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
