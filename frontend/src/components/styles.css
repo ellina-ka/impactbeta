@@ -228,6 +228,7 @@
 
 .avatar.secondary {
   margin-left: -12px;
+  z-index: 1;
 }
 
 .avatar img {
