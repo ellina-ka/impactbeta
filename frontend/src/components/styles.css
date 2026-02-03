@@ -2782,3 +2782,108 @@
   }
 }
 
+
+
+/* Admin Profile Modal */
+.avatar.clickable {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.avatar.clickable:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.admin-modal {
+  max-width: 400px;
+}
+
+.admin-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-profile-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #E8F5F3;
+}
+
+.admin-profile-info h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.admin-role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: #3B7073;
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admin-detail-item svg {
+  color: #3B7073;
+  margin-top: 2px;
+}
+
+.admin-detail-item label {
+  display: block;
+  font-size: 11px;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.admin-detail-item p {
+  font-size: 14px;
+  color: #111827;
+  margin: 0;
+}
+
+.admin-permissions h5 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 10px;
+}
+
+.permission-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-tag {
+  padding: 6px 12px;
+  background-color: #E8F5F3;
+  color: #1D4648;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
