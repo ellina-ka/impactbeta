@@ -1,0 +1,6 @@
+event_id,actor_id,actor_role,entity_type,entity_id,action,timestamp,notes
+2218e526-a0ac-4824-9038-e36a01c840fe,admin-001,university_admin,verification_request,vr-001,confirm,2026-02-03T16:37:44.038368+00:00,"Confirmed by admin Admin User. Log ID: log-004, Hours: 3.0"
+e45a81c4-124f-438a-9727-2370c7d358bf,admin-001,university_admin,verification_request,vr-002,reject,2026-02-03T16:37:47.201982+00:00,Rejected by admin Admin User. Reason: insufficient_evidence. Log ID: log-005
+9b140008-4055-48e4-9e6c-ba028cf482f6,admin-001,university_admin,verification_request,vr-003,flag,2026-02-03T16:37:50.351989+00:00,Flagged by admin Admin User. Reason: Needs additional documentation review for compliance. Log ID: log-006
+6956bf65-5607-4dc7-979a-eb84b3c71334,admin-001,university_admin,service_log,settings,edit,2026-02-03T16:38:17.174820+00:00,University name changed to: Updated Test University
+6620917c-92cd-4550-a8b2-62cb5aeb378b,admin-001,university_admin,export,verified-logs-spring-2026,export,2026-02-03T16:38:37.016447+00:00,Exported verified logs for Spring 2026. 4 records.
