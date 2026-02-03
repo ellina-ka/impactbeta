@@ -1,5 +1,6 @@
 import React from 'react';
 import { Heart, Leaf, Users, ChevronRight, MoreHorizontal, Sun } from 'lucide-react';
+import './styles.css';
 
 const iconMap = {
   heart: Heart,
@@ -46,99 +47,6 @@ function ProgramsPanel({ programs, loading }) {
           })
         )}
       </div>
-
-      <style jsx>{`
-        .panel {
-          background-color: white;
-          border-radius: 12px;
-          padding: 20px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-
-        .panel-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 16px;
-        }
-
-        .panel-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: #111827;
-        }
-
-        .more-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 32px;
-          height: 32px;
-          border: none;
-          background: transparent;
-          color: #6B7280;
-          cursor: pointer;
-          border-radius: 6px;
-          transition: background-color 0.2s;
-        }
-
-        .more-btn:hover {
-          background-color: #F3F4F6;
-        }
-
-        .programs-list {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .program-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .program-item:hover {
-          background-color: #F9FAFB;
-        }
-
-        .program-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          background-color: #E8F5F3;
-          color: #3B7073;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .program-info {
-          flex: 1;
-        }
-
-        .program-name {
-          font-size: 14px;
-          font-weight: 500;
-          color: #111827;
-        }
-
-        .chevron {
-          color: #9CA3AF;
-        }
-
-        .loading-state,
-        .empty-state {
-          padding: 24px;
-          text-align: center;
-          color: #6B7280;
-          font-size: 14px;
-        }
-      `}</style>
     </div>
   );
 }
