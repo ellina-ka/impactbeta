@@ -7,9 +7,19 @@ import ParticipantsPage from './components/ParticipantsPage';
 import ReportsPage from './components/ReportsPage';
 import AdminPage from './components/AdminPage';
 import Toast from './components/Toast';
+import {
+  getTerms,
+  getSettings,
+  getKpis,
+  getPrograms,
+  getVerificationRequests,
+  getStudents,
+  confirmVerification,
+  rejectVerification,
+  flagVerification,
+  updateSettings,
+} from './api/client';
 import './App.css';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -25,29 +35,23 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // Show toast notification
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Persist term selection
   useEffect(() => {
     localStorage.setItem('selectedTerm', selectedTerm);
   }, [selectedTerm]);
 
-  // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [termsRes, settingsRes] = await Promise.all([
-          fetch(`${API_URL}/api/terms`),
-          fetch(`${API_URL}/api/settings`)
+        const [termsData, settingsData] = await Promise.all([
+          getTerms(),
+          getSettings()
         ]);
-        
-        const termsData = await termsRes.json();
-        const settingsData = await settingsRes.json();
-        
+
         setTerms(termsData);
         setSettings({
           university_name: settingsData.university_name,
@@ -60,22 +64,16 @@ function App() {
     fetchData();
   }, []);
 
-  // Fetch term-dependent data
   const fetchTermData = useCallback(async () => {
     setLoading(true);
     try {
-      const [kpisRes, programsRes, vrRes, studentsRes] = await Promise.all([
-        fetch(`${API_URL}/api/kpis?term_id=${selectedTerm}`),
-        fetch(`${API_URL}/api/programs?term_id=${selectedTerm}`),
-        fetch(`${API_URL}/api/verification-requests?term_id=${selectedTerm}&status=awaiting_confirmation`),
-        fetch(`${API_URL}/api/students?term_id=${selectedTerm}`)
+      const [kpisData, programsData, vrData, studentsData] = await Promise.all([
+        getKpis(selectedTerm),
+        getPrograms(selectedTerm),
+        getVerificationRequests(selectedTerm, 'awaiting_confirmation'),
+        getStudents(selectedTerm)
       ]);
-      
-      const kpisData = await kpisRes.json();
-      const programsData = await programsRes.json();
-      const vrData = await vrRes.json();
-      const studentsData = await studentsRes.json();
-      
+
       setKpis(kpisData);
       setPrograms(programsData);
       setVerificationRequests(vrData);
@@ -91,20 +89,11 @@ function App() {
     fetchTermData();
   }, [fetchTermData]);
 
-  // Verification actions
   const handleConfirm = async (requestId) => {
     try {
-      const response = await fetch(`${API_URL}/api/verification-requests/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_id: requestId })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        showToast(`Verified ${data.hours_added} hours successfully!`, 'success');
-        fetchTermData();
-      }
+      const data = await confirmVerification(requestId);
+      showToast(`Verified ${data.hours_added || 0} hours successfully!`, 'success');
+      fetchTermData();
     } catch (error) {
       console.error('Error confirming verification:', error);
       showToast('Failed to confirm verification', 'error');
@@ -113,16 +102,9 @@ function App() {
 
   const handleReject = async (requestId, reason) => {
     try {
-      const response = await fetch(`${API_URL}/api/verification-requests/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_id: requestId, reason })
-      });
-      
-      if (response.ok) {
-        showToast('Request rejected', 'warning');
-        fetchTermData();
-      }
+      await rejectVerification(requestId, reason);
+      showToast('Request rejected', 'warning');
+      fetchTermData();
     } catch (error) {
       console.error('Error rejecting verification:', error);
       showToast('Failed to reject verification', 'error');
@@ -131,16 +113,9 @@ function App() {
 
   const handleFlag = async (requestId, reason) => {
     try {
-      const response = await fetch(`${API_URL}/api/verification-requests/flag`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_id: requestId, reason })
-      });
-      
-      if (response.ok) {
-        showToast('Request flagged for review', 'warning');
-        fetchTermData();
-      }
+      await flagVerification(requestId, reason);
+      showToast('Request flagged for review', 'warning');
+      fetchTermData();
     } catch (error) {
       console.error('Error flagging verification:', error);
       showToast('Failed to flag verification', 'error');
@@ -149,20 +124,12 @@ function App() {
 
   const handleSettingsUpdate = async (newSettings) => {
     try {
-      const response = await fetch(`${API_URL}/api/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSettings)
+      const data = await updateSettings(newSettings);
+      setSettings({
+        university_name: data.university_name,
+        dashboard_title: data.dashboard_title || 'Test Pilot Dashboard'
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSettings({
-          university_name: data.university_name,
-          dashboard_title: data.dashboard_title || 'Test Pilot Dashboard'
-        });
-        showToast('Settings updated', 'success');
-      }
+      showToast('Settings updated', 'success');
     } catch (error) {
       console.error('Error updating settings:', error);
       showToast('Failed to update settings', 'error');
@@ -191,8 +158,8 @@ function App() {
         );
       case 'activities':
         return (
-          <ActivitiesPage 
-            selectedTerm={selectedTerm} 
+          <ActivitiesPage
+            selectedTerm={selectedTerm}
             onActionComplete={(action, hours) => {
               if (action === 'confirm') {
                 showToast(`Verified ${hours} hours successfully!`, 'success');
@@ -207,8 +174,8 @@ function App() {
         );
       case 'participants':
         return (
-          <ParticipantsPage 
-            selectedTerm={selectedTerm} 
+          <ParticipantsPage
+            selectedTerm={selectedTerm}
             students={students}
             loading={loading}
             onNavigateToActivities={() => setActivePage('activities')}
@@ -216,16 +183,16 @@ function App() {
         );
       case 'reports':
         return (
-          <ReportsPage 
-            selectedTerm={selectedTerm} 
+          <ReportsPage
+            selectedTerm={selectedTerm}
             terms={terms}
             onExport={handleExport}
           />
         );
       case 'admin':
         return (
-          <AdminPage 
-            settings={settings} 
+          <AdminPage
+            settings={settings}
             onSettingsUpdate={handleSettingsUpdate}
           />
         );
@@ -236,13 +203,13 @@ function App() {
 
   return (
     <div className="app-container" data-testid="app-container">
-      <Sidebar 
-        activePage={activePage} 
-        onPageChange={setActivePage} 
+      <Sidebar
+        activePage={activePage}
+        onPageChange={setActivePage}
         settings={settings}
       />
       <div className="main-content">
-        <Topbar 
+        <Topbar
           terms={terms}
           selectedTerm={selectedTerm}
           onTermChange={setSelectedTerm}

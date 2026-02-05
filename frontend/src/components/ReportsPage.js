@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Download, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import './styles.css';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+import { getExportUrl, isStaticMode } from '../api/client';
 
 function ReportsPage({ selectedTerm, terms, onExport }) {
   const [exporting, setExporting] = useState(null);
@@ -11,11 +10,12 @@ function ReportsPage({ selectedTerm, terms, onExport }) {
   const handleExport = async (type) => {
     setExporting(type);
     try {
-      const endpoint = type === 'logs' 
-        ? `/api/export/verified-logs?term_id=${selectedTerm}`
-        : `/api/export/audit-trail?term_id=${selectedTerm}`;
-      
-      const response = await fetch(`${API_URL}${endpoint}`);
+      if (isStaticMode()) {
+        onExport('Static demo mode: export file generation is mocked');
+        return;
+      }
+
+      const response = await fetch(getExportUrl(type, selectedTerm));
       const blob = await response.blob();
       
       const url = window.URL.createObjectURL(blob);
