@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Search, Bell, MessageSquare, ChevronDown, X, Mail, Shield, Calendar } from 'lucide-react';
 import './styles.css';
 
+const publicAssetPath = (path) => `${process.env.PUBLIC_URL || ''}${path}`;
+
 const ADMINS = [
   { 
     id: 'lio', 
@@ -12,7 +14,7 @@ const ADMINS = [
     joinedDate: 'Sep 2024',
     permissions: ['Full Access', 'System Settings', 'User Management'],
     image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/pb6ehdx0_lio.png',
-    fallbackImage: '/admins/lio.jpg'
+    fallbackImage: publicAssetPath('/admins/lio.png')
   },
   { 
     id: 'ellina', 
@@ -23,7 +25,7 @@ const ADMINS = [
     joinedDate: 'Sep 2024',
     permissions: ['Verify Hours', 'Export Reports', 'Manage Programs'],
     image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/23xml4vl_ellina.png',
-    fallbackImage: '/admins/ellina.jpg'
+    fallbackImage: publicAssetPath('/admins/ellina.png')
   }
 ];
 
@@ -88,7 +90,8 @@ function Topbar({ terms, selectedTerm, onTermChange }) {
                 src={admin.image}
                 alt={admin.name}
                 onError={(e) => {
-                  if (admin.fallbackImage && e.currentTarget.src !== admin.fallbackImage) {
+                  if (admin.fallbackImage) {
+                    e.currentTarget.onerror = null;
                     e.currentTarget.src = admin.fallbackImage;
                   }
                 }}
@@ -122,7 +125,8 @@ function Topbar({ terms, selectedTerm, onTermChange }) {
                   alt={selectedAdmin.name}
                   className="admin-profile-image"
                   onError={(e) => {
-                    if (selectedAdmin.fallbackImage && e.currentTarget.src !== selectedAdmin.fallbackImage) {
+                    if (selectedAdmin.fallbackImage) {
+                      e.currentTarget.onerror = null;
                       e.currentTarget.src = selectedAdmin.fallbackImage;
                     }
                   }}
