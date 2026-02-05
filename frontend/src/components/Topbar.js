@@ -11,7 +11,8 @@ const ADMINS = [
     department: 'Technology',
     joinedDate: 'Sep 2024',
     permissions: ['Full Access', 'System Settings', 'User Management'],
-    image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/pb6ehdx0_lio.png'
+    image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/pb6ehdx0_lio.png',
+    fallbackImage: '/admins/lio.jpg'
   },
   { 
     id: 'ellina', 
@@ -21,7 +22,8 @@ const ADMINS = [
     department: 'Student Services',
     joinedDate: 'Sep 2024',
     permissions: ['Verify Hours', 'Export Reports', 'Manage Programs'],
-    image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/23xml4vl_ellina.png'
+    image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/23xml4vl_ellina.png',
+    fallbackImage: '/admins/ellina.jpg'
   }
 ];
 
@@ -82,7 +84,15 @@ function Topbar({ terms, selectedTerm, onTermChange }) {
               onMouseLeave={() => setTooltip(null)}
               onClick={() => setSelectedAdmin(admin)}
             >
-              <img src={admin.image} alt={admin.name} />
+              <img
+                src={admin.image}
+                alt={admin.name}
+                onError={(e) => {
+                  if (admin.fallbackImage && e.currentTarget.src !== admin.fallbackImage) {
+                    e.currentTarget.src = admin.fallbackImage;
+                  }
+                }}
+              />
               {tooltip === admin.id && !selectedAdmin && (
                 <div className="avatar-tooltip">
                   <strong>{admin.name}</strong>
@@ -111,6 +121,11 @@ function Topbar({ terms, selectedTerm, onTermChange }) {
                   src={selectedAdmin.image} 
                   alt={selectedAdmin.name}
                   className="admin-profile-image"
+                  onError={(e) => {
+                    if (selectedAdmin.fallbackImage && e.currentTarget.src !== selectedAdmin.fallbackImage) {
+                      e.currentTarget.src = selectedAdmin.fallbackImage;
+                    }
+                  }}
                 />
                 <div className="admin-profile-info">
                   <h4>{selectedAdmin.name}</h4>
