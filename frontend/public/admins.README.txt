@@ -1,7 +1,9 @@
-Place the admin profile photos here if you want to self-host them:
+Place the admin profile photos here for self-hosted avatar delivery:
 - /admins/lio.png
 - /admins/ellina.png
 
-The app currently loads remote images first and falls back to these local paths if the remote URLs fail.
+The app loads these local paths via `${PUBLIC_URL}/admins/...` and appends a version query string (`?v=...`) for cache busting.
+
+If you still see old avatars after deploy, set `REACT_APP_ADMIN_ASSET_VERSION` to a new value during build (for example a timestamp or commit SHA).
 
 When deployed under a subpath, these files are served from `${PUBLIC_URL}/admins/...` (for example, `/myapp/admins/lio.png`).
