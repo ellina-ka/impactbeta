@@ -54,15 +54,9 @@
 # Environment files
 *.env
 *.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+
+# Node dependencies
+node_modules/
+
+# Frontend build output
+frontend/build/

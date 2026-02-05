@@ -4,13 +4,6 @@ import './styles.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 
-// Term requirements - could come from backend in future
-const TERM_REQUIREMENTS = {
-  'spring-2026': 20,
-  'fall-2025': 20,
-  'summer-2026': 10
-};
-
 function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivities }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('risk_score');
@@ -19,7 +12,7 @@ function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivit
   const [studentDetails, setStudentDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const requiredHours = TERM_REQUIREMENTS[selectedTerm] || 20;
+  const requiredHours = students[0]?.required_hours || studentDetails?.required_hours || 20;
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -34,7 +27,7 @@ function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivit
     setLoadingDetails(true);
     setSelectedStudent(studentId);
     try {
-      const response = await fetch(`${API_URL}/api/students/${studentId}`);
+      const response = await fetch(`${API_URL}/api/students/${studentId}?term_id=${selectedTerm}`);
       const data = await response.json();
       setStudentDetails(data);
     } catch (error) {
@@ -49,34 +42,13 @@ function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivit
     setStudentDetails(null);
   };
 
-  // Enrich students with risk calculation
-  const enrichedStudents = students.map(student => {
-    const progress = (student.verified_hours / requiredHours) * 100;
-    let riskStatus = 'on_track';
-    let riskScore = 0;
-    
-    if (progress >= 75) {
-      riskStatus = 'on_track';
-      riskScore = 0;
-    } else if (progress >= 50) {
-      riskStatus = 'on_track';
-      riskScore = 1;
-    } else if (progress >= 25) {
-      riskStatus = 'needs_attention';
-      riskScore = 2;
-    } else {
-      riskStatus = 'at_risk';
-      riskScore = 3;
-    }
-    
-    return {
-      ...student,
-      progress,
-      riskStatus,
-      riskScore,
-      requiredHours
-    };
-  });
+  const enrichedStudents = students.map((student) => ({
+    ...student,
+    riskStatus: student.risk_status || student.status || 'at_risk',
+    risk_score: student.risk_score ?? 3,
+    requiredHours: student.required_hours || requiredHours,
+    progress: student.progress ?? 0,
+  }));
 
   const filteredStudents = enrichedStudents
     .filter(s => 
@@ -228,7 +200,7 @@ function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivit
                           />
                         </div>
                         <span className="progress-text">
-                          {student.verified_hours}h / {requiredHours}h
+                          {student.verified_hours}h / {student.requiredHours}h
                         </span>
                       </div>
                     </div>
@@ -282,12 +254,12 @@ function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivit
                           cx="50" cy="50" r="45" 
                           className="progress-ring-fill"
                           style={{ 
-                            strokeDasharray: `${Math.min((studentDetails.verified_hours / requiredHours) * 283, 283)} 283`
+                            strokeDasharray: `${Math.min((studentDetails.progress / 100) * 283, 283)} 283`
                           }}
                         />
                       </svg>
                       <div className="progress-ring-text">
-                        <span className="ring-value">{Math.round((studentDetails.verified_hours / requiredHours) * 100)}%</span>
+                        <span className="ring-value">{Math.round(studentDetails.progress || 0)}%</span>
                         <span className="ring-label">Complete</span>
                       </div>
                     </div>
@@ -302,12 +274,12 @@ function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivit
                       </div>
                       <div className="breakdown-item">
                         <span className="breakdown-label">Required</span>
-                        <span className="breakdown-value">{requiredHours}h</span>
+                        <span className="breakdown-value">{studentDetails.required_hours || requiredHours}h</span>
                       </div>
                       <div className="breakdown-item">
                         <span className="breakdown-label">Remaining</span>
                         <span className="breakdown-value remaining">
-                          {Math.max(requiredHours - studentDetails.verified_hours, 0)}h
+                          {Math.max((studentDetails.required_hours || requiredHours) - studentDetails.verified_hours, 0)}h
                         </span>
                       </div>
                     </div>
