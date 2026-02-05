@@ -13,7 +13,7 @@ const ADMINS = [
     department: 'Technology',
     joinedDate: 'Sep 2024',
     permissions: ['Full Access', 'System Settings', 'User Management'],
-    image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/pb6ehdx0_lio.png',
+    image: publicAssetPath('/admins/lio.png'),
     fallbackImage: publicAssetPath('/admins/lio.png')
   },
   { 
@@ -24,7 +24,7 @@ const ADMINS = [
     department: 'Student Services',
     joinedDate: 'Sep 2024',
     permissions: ['Verify Hours', 'Export Reports', 'Manage Programs'],
-    image: 'https://customer-assets.emergentagent.com/job_da38835d-311b-49f9-8c0f-bafdbb9c5cb4/artifacts/23xml4vl_ellina.png',
+    image: publicAssetPath('/admins/ellina.png'),
     fallbackImage: publicAssetPath('/admins/ellina.png')
   }
 ];
