@@ -2888,3 +2888,61 @@
   font-weight: 500;
 }
 
+
+.section-header.compact {
+  margin-bottom: 12px;
+}
+
+.section-header.compact h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.setting-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid #F3F4F6;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.toggle-btn {
+  border: 1px solid #D1D5DB;
+  background: #fff;
+  color: #374151;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.toggle-btn.on {
+  background: #E8F5F3;
+  border-color: #3B7073;
+  color: #1D4648;
+}
+
+.role-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.role-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.role-row select {
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #fff;
+}
