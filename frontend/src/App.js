@@ -17,7 +17,7 @@ function App() {
     return localStorage.getItem('selectedTerm') || 'spring-2026';
   });
   const [terms, setTerms] = useState([]);
-  const [settings, setSettings] = useState({ university_name: 'Columbia University', dashboard_title: 'Test Pilot Dashboard' });
+  const [settings, setSettings] = useState({ university_name: '', dashboard_title: '' });
   const [kpis, setKpis] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [verificationRequests, setVerificationRequests] = useState([]);
@@ -239,6 +239,7 @@ function App() {
       <Sidebar 
         activePage={activePage} 
         onPageChange={setActivePage} 
+        settings={settings}
       />
       <div className="main-content">
         <Topbar 

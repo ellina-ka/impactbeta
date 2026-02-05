@@ -17,7 +17,7 @@ const navItems = [
   { id: 'admin', label: 'Admin', icon: Settings },
 ];
 
-function Sidebar({ activePage, onPageChange }) {
+function Sidebar({ activePage, onPageChange, settings }) {
   return (
     <aside className="sidebar" data-testid="sidebar">
       {/* Logo Area */}
@@ -26,8 +26,8 @@ function Sidebar({ activePage, onPageChange }) {
           <Heart size={28} strokeWidth={2.5} />
         </div>
         <div className="logo-text">
-          <span className="logo-title">MyImpact</span>
-          <span className="logo-subtitle">Impact tracking platform</span>
+          <span className="logo-title">{settings?.dashboard_title}</span>
+          <span className="logo-subtitle">{settings?.university_name}</span>
         </div>
       </div>
 

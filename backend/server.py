@@ -9,6 +9,7 @@ import uuid
 import csv
 import io
 import random
+import os
 
 app = FastAPI(title="MyImpact API", version="1.0.0")
 
@@ -144,8 +145,8 @@ class AuditEvent(BaseModel):
     notes: str
 
 class Settings(BaseModel):
-    university_name: str = "Columbia University"
-    dashboard_title: str = "Test Pilot Dashboard"
+    university_name: str = os.getenv("UNIVERSITY_NAME", "Columbia University")
+    dashboard_title: str = os.getenv("DASHBOARD_TITLE", "Test Pilot Dashboard")
 
 # ============== REQUEST/RESPONSE MODELS ==============
 class ConfirmRequest(BaseModel):
