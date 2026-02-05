@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Search, Bell, MessageSquare, ChevronDown, X, Mail, Shield, Calendar } from 'lucide-react';
 import './styles.css';
 
-const publicAssetPath = (path) => `${process.env.PUBLIC_URL || ''}${path}`;
+const ADMIN_ASSET_VERSION = process.env.REACT_APP_ADMIN_ASSET_VERSION || '20260205';
+const publicAssetPath = (path) => `${process.env.PUBLIC_URL || ''}${path}?v=${ADMIN_ASSET_VERSION}`;
 
 const ADMINS = [
   { 
