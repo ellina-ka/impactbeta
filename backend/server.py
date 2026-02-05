@@ -70,6 +70,31 @@ class Term(BaseModel):
     name: str
     start_date: str
     end_date: str
+    required_hours: float
+
+
+RISK_THRESHOLDS = {
+    "on_track": 50,
+    "needs_attention": 25,
+}
+
+
+def calculate_progress_risk(verified_hours: float, required_hours: float):
+    progress = (verified_hours / required_hours * 100) if required_hours > 0 else 0
+    if progress >= RISK_THRESHOLDS["on_track"]:
+        risk_status = "on_track"
+        risk_score = 0 if progress >= 75 else 1
+    elif progress >= RISK_THRESHOLDS["needs_attention"]:
+        risk_status = "needs_attention"
+        risk_score = 2
+    else:
+        risk_status = "at_risk"
+        risk_score = 3
+    return {
+        "progress": round(progress, 1),
+        "risk_status": risk_status,
+        "risk_score": risk_score,
+    }
 
 class Program(BaseModel):
     program_id: str
@@ -152,9 +177,9 @@ class DataStore:
     def _seed_data(self):
         # Seed Terms
         terms_data = [
-            Term(term_id="fall-2025", name="Fall 2025", start_date="2025-09-01", end_date="2025-12-15"),
-            Term(term_id="spring-2026", name="Spring 2026", start_date="2026-01-15", end_date="2026-05-15"),
-            Term(term_id="summer-2026", name="Summer 2026", start_date="2026-06-01", end_date="2026-08-15"),
+            Term(term_id="fall-2025", name="Fall 2025", start_date="2025-09-01", end_date="2025-12-15", required_hours=20),
+            Term(term_id="spring-2026", name="Spring 2026", start_date="2026-01-15", end_date="2026-05-15", required_hours=20),
+            Term(term_id="summer-2026", name="Summer 2026", start_date="2026-06-01", end_date="2026-08-15", required_hours=10),
         ]
         for t in terms_data:
             self.terms[t.term_id] = t
@@ -387,35 +412,36 @@ def get_program(program_id: str):
 @app.get("/api/students")
 def get_students(term_id: Optional[str] = None):
     students = list(db.students.values())
-    
+
+    term_program_ids = None
+    required_hours = 20
+    if term_id:
+        if term_id not in db.terms:
+            raise HTTPException(status_code=404, detail="Term not found")
+        term_program_ids = [p.program_id for p in db.programs.values() if p.term_id == term_id]
+        required_hours = db.terms[term_id].required_hours
+
     # Enrich with stats
     enriched = []
     for student in students:
         # Filter by term if specified
-        if term_id:
-            term_program_ids = [p.program_id for p in db.programs.values() if p.term_id == term_id]
-            student_logs = [l for l in db.service_logs.values() 
-                          if l.student_id == student.student_id and l.program_id in term_program_ids]
+        if term_program_ids is not None:
+            student_logs = [
+                l for l in db.service_logs.values()
+                if l.student_id == student.student_id and l.program_id in term_program_ids
+            ]
         else:
             student_logs = [l for l in db.service_logs.values() if l.student_id == student.student_id]
-        
+
         total_hours = sum(l.hours for l in student_logs)
         verified_hours = sum(l.hours for l in student_logs if l.status == LogStatus.confirmed)
         pending_hours = sum(l.hours for l in student_logs if l.status == LogStatus.pending)
-        
+
         # Get program names
         program_names = [db.programs[pid].name for pid in student.program_ids if pid in db.programs]
-        
-        # Determine status (on track if >= 10 verified hours for the term)
-        required_hours = 20  # Semester requirement
-        progress = (verified_hours / required_hours * 100) if required_hours > 0 else 0
-        if progress >= 50:
-            status = "on_track"
-        elif progress >= 25:
-            status = "needs_attention"
-        else:
-            status = "at_risk"
-        
+
+        risk = calculate_progress_risk(verified_hours=verified_hours, required_hours=required_hours)
+
         enriched.append({
             **student.model_dump(),
             "total_hours": round(total_hours, 1),
@@ -423,19 +449,34 @@ def get_students(term_id: Optional[str] = None):
             "pending_hours": round(pending_hours, 1),
             "percent_verified": round((verified_hours / total_hours * 100) if total_hours > 0 else 0, 1),
             "program_names": program_names,
-            "status": status,
-            "progress": round(progress, 1)
+            "required_hours": required_hours,
+            "status": risk["risk_status"],
+            "risk_status": risk["risk_status"],
+            "risk_score": risk["risk_score"],
+            "progress": risk["progress"],
         })
-    
+
     return enriched
 
 @app.get("/api/students/{student_id}")
-def get_student(student_id: str):
+def get_student(student_id: str, term_id: Optional[str] = None):
     if student_id not in db.students:
         raise HTTPException(status_code=404, detail="Student not found")
     
     student = db.students[student_id]
-    student_logs = [l for l in db.service_logs.values() if l.student_id == student_id]
+
+    required_hours = 20
+    term_program_ids = None
+    if term_id:
+        if term_id not in db.terms:
+            raise HTTPException(status_code=404, detail="Term not found")
+        required_hours = db.terms[term_id].required_hours
+        term_program_ids = [p.program_id for p in db.programs.values() if p.term_id == term_id]
+
+    student_logs = [
+        l for l in db.service_logs.values()
+        if l.student_id == student_id and (term_program_ids is None or l.program_id in term_program_ids)
+    ]
     
     # Enrich logs with program names
     enriched_logs = []
@@ -448,7 +489,9 @@ def get_student(student_id: str):
     
     total_hours = sum(l.hours for l in student_logs)
     verified_hours = sum(l.hours for l in student_logs if l.status == LogStatus.confirmed)
+    pending_hours = sum(l.hours for l in student_logs if l.status == LogStatus.pending)
     program_names = [db.programs[pid].name for pid in student.program_ids if pid in db.programs]
+    risk = calculate_progress_risk(verified_hours=verified_hours, required_hours=required_hours)
     
     # Get audit events for this student's logs
     log_ids = [l.log_id for l in student_logs]
@@ -459,8 +502,14 @@ def get_student(student_id: str):
         **student.model_dump(),
         "total_hours": round(total_hours, 1),
         "verified_hours": round(verified_hours, 1),
+        "pending_hours": round(pending_hours, 1),
         "percent_verified": round((verified_hours / total_hours * 100) if total_hours > 0 else 0, 1),
         "program_names": program_names,
+        "required_hours": required_hours,
+        "status": risk["risk_status"],
+        "risk_status": risk["risk_status"],
+        "risk_score": risk["risk_score"],
+        "progress": risk["progress"],
         "logs": enriched_logs,
         "audit_history": relevant_audits[-10:]  # Last 10 events
     }
