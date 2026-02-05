@@ -37,3 +37,9 @@ This repo now supports a **static demo mode** for GitHub Pages.
   - run `cd frontend && npm start`
 - Static demo local (no backend):
   - `cd frontend && REACT_APP_STATIC_MODE=true npm start`
+## GitHub Pages (Static Demo) — quick start
+If you want this repository to work on GitHub Pages immediately, follow the exact checklist in:
+
+- `docs_github_pages_static_checklist.md`
+
+Why: GitHub Pages only hosts static assets, while this project currently includes a FastAPI backend.
