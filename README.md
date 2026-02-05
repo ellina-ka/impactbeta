@@ -11,3 +11,10 @@ My Impact Beta Version
    - `REACT_APP_ADMIN_ASSET_VERSION=<new-value> npm run build`
 
 Admin avatars are served from `${PUBLIC_URL}/admins/lio.png` and `${PUBLIC_URL}/admins/ellina.png`.
+
+## GitHub Pages (Static Demo) — quick start
+If you want this repository to work on GitHub Pages immediately, follow the exact checklist in:
+
+- `docs_github_pages_static_checklist.md`
+
+Why: GitHub Pages only hosts static assets, while this project currently includes a FastAPI backend.
