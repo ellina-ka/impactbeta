@@ -49,7 +49,10 @@ function App() {
         const settingsData = await settingsRes.json();
         
         setTerms(termsData);
-        setSettings(settingsData);
+        setSettings({
+          university_name: settingsData.university_name,
+          dashboard_title: settingsData.dashboard_title || 'Test Pilot Dashboard'
+        });
       } catch (error) {
         console.error('Error fetching initial data:', error);
       }
@@ -154,7 +157,10 @@ function App() {
       
       if (response.ok) {
         const data = await response.json();
-        setSettings(data);
+        setSettings({
+          university_name: data.university_name,
+          dashboard_title: data.dashboard_title || 'Test Pilot Dashboard'
+        });
         showToast('Settings updated', 'success');
       }
     } catch (error) {

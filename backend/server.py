@@ -136,6 +136,7 @@ class FlagRequest(BaseModel):
 
 class UpdateSettingsRequest(BaseModel):
     university_name: str
+    dashboard_title: Optional[str] = None
 
 # ============== IN-MEMORY DATA STORE ==============
 class DataStore:
@@ -706,6 +707,8 @@ def get_settings():
 def update_settings(request: UpdateSettingsRequest):
     user = get_current_user()
     db.settings.university_name = request.university_name
+    if request.dashboard_title is not None:
+        db.settings.dashboard_title = request.dashboard_title
     
     audit = AuditEvent(
         event_id=str(uuid.uuid4()),
@@ -715,7 +718,10 @@ def update_settings(request: UpdateSettingsRequest):
         entity_id="settings",
         action=AuditAction.edit,
         timestamp=datetime.now(timezone.utc).isoformat(),
-        notes=f"University name changed to: {request.university_name}"
+        notes=(
+            f"Settings updated. University name: {request.university_name}. "
+            f"Dashboard title: {db.settings.dashboard_title}"
+        )
     )
     db.audit_events.append(audit)
     
