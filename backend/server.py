@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 import csv
@@ -167,6 +167,7 @@ class UpdateSettingsRequest(BaseModel):
 # ============== IN-MEMORY DATA STORE ==============
 class DataStore:
     def __init__(self):
+        random.seed(20260203)
         self.terms: dict[str, Term] = {}
         self.programs: dict[str, Program] = {}
         self.students: dict[str, Student] = {}
@@ -200,32 +201,21 @@ class DataStore:
         for p in programs_data:
             self.programs[p.program_id] = p
         
-        # Seed 25 realistic students
-        first_names = ["Emma", "Liam", "Olivia", "Noah", "Ava", "Ethan", "Sophia", "Mason", "Isabella", "William",
-                       "Mia", "James", "Charlotte", "Benjamin", "Amelia", "Lucas", "Harper", "Henry", "Evelyn", "Alexander",
-                       "Lily", "Tai", "Sacha", "Maria", "Marcus"]
-        last_names = ["Johnson", "Chen", "Williams", "Garcia", "Brown", "Martinez", "Davis", "Rodriguez", "Wilson", "Anderson",
-                      "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Thompson", "White", "Harris", "Robinson",
-                      "Robbins", "Lewiner", "Park", "Kim", "Patel"]
-        
-        spring_programs = ["csc-001", "gi-002", "hno-003"]
-        
-        students_data = []
-        for i in range(25):
-            first = first_names[i]
-            last = last_names[i]
-            # Assign 1-2 programs to each student
-            num_programs = random.randint(1, 2)
-            assigned_programs = random.sample(spring_programs, num_programs)
-            
-            student = Student(
-                student_id=f"std-{i+1:03d}",
-                name=f"{first} {last}",
-                email=f"{first.lower()}.{last.lower()}@columbia.edu",
-                program_ids=assigned_programs,
-                avatar=f"{first[0]}{last[0]}"
-            )
-            students_data.append(student)
+        # Seed deterministic fixture students
+        students_data = [
+            Student(student_id="std-001", name="Emma Johnson", email="emma.johnson@columbia.edu", program_ids=["csc-001"], avatar="EJ"),
+            Student(student_id="std-002", name="Liam Chen", email="liam.chen@columbia.edu", program_ids=["csc-001", "gi-002"], avatar="LC"),
+            Student(student_id="std-003", name="Olivia Williams", email="olivia.williams@columbia.edu", program_ids=["hno-003"], avatar="OW"),
+            Student(student_id="std-004", name="Noah Garcia", email="noah.garcia@columbia.edu", program_ids=["gi-002"], avatar="NG"),
+            Student(student_id="std-005", name="Ava Brown", email="ava.brown@columbia.edu", program_ids=["csc-001", "hno-003"], avatar="AB"),
+            Student(student_id="std-006", name="Ethan Martinez", email="ethan.martinez@columbia.edu", program_ids=["csc-001"], avatar="EM"),
+            Student(student_id="std-007", name="Sophia Davis", email="sophia.davis@columbia.edu", program_ids=["gi-002", "hno-003"], avatar="SD"),
+            Student(student_id="std-008", name="Mason Rodriguez", email="mason.rodriguez@columbia.edu", program_ids=["hno-003"], avatar="MR"),
+            Student(student_id="std-009", name="Isabella Wilson", email="isabella.wilson@columbia.edu", program_ids=["gi-002"], avatar="IW"),
+            Student(student_id="std-010", name="William Anderson", email="william.anderson@columbia.edu", program_ids=["csc-001", "gi-002"], avatar="WA"),
+            Student(student_id="std-011", name="Mia Thomas", email="mia.thomas@columbia.edu", program_ids=["csc-001"], avatar="MT"),
+            Student(student_id="std-012", name="James Taylor", email="james.taylor@columbia.edu", program_ids=["hno-003"], avatar="JT"),
+        ]
         
         for s in students_data:
             self.students[s.student_id] = s
@@ -234,98 +224,35 @@ class DataStore:
                 if pid in self.programs:
                     self.programs[pid].active_students_count += 1
         
-        # Activity descriptions for realistic logs
-        activities = {
-            "csc-001": [
-                ("Food bank volunteering at Community Kitchen", "Harlem Grown - Community Urban Farming"),
-                ("Elderly care visit at Senior Center", "NYC Elder Care Network"),
-                ("Youth mentoring session", "Columbia Youth Mentorship Program"),
-                ("Community garden maintenance", "Harlem Grown - Urban Farm"),
-                ("Soup kitchen service", "Holy Apostles Soup Kitchen"),
-                ("Tutoring at local school", "PS 125 After-School Program"),
-            ],
-            "gi-002": [
-                ("Tree planting at Central Park", "Central Park Conservancy"),
-                ("Beach cleanup at Coney Island", "NYC Parks - Clean Shores"),
-                ("Recycling education workshop", "GrowNYC"),
-                ("Campus sustainability audit", "Columbia Sustainability Office"),
-                ("River cleanup at Hudson", "Riverkeeper NYC"),
-                ("Urban garden planting", "Brooklyn Botanic Garden"),
-            ],
-            "hno-003": [
-                ("Homeless shelter meal service", "Bowery Mission"),
-                ("After-school tutoring", "Chess Volunteers - Academic Support"),
-                ("Clothing drive sorting", "Housing Works"),
-                ("Job skills workshop facilitation", "Goodwill NYC"),
-                ("Health fair volunteering", "NYC Health + Hospitals"),
-                ("ESL class assistance", "Literacy Partners"),
-            ]
-        }
-        
-        now = datetime.now(timezone.utc)
-        logs_data = []
-        vr_data = []
-        log_counter = 1
-        vr_counter = 1
-        
-        # Generate 1-3 logs per student with varied statuses
-        for student in students_data:
-            num_logs = random.randint(1, 3)
-            for _ in range(num_logs):
-                program_id = random.choice(student.program_ids)
-                activity = random.choice(activities.get(program_id, activities["csc-001"]))
-                
-                # Randomize date within Spring 2026
-                days_ago = random.randint(1, 90)
-                log_date = (now - timedelta(days=days_ago)).strftime("%Y-%m-%d")
-                
-                # Randomize hours (1-6 hours)
-                hours = round(random.uniform(1.5, 6.0), 1)
-                
-                # Randomize status: 40% confirmed, 35% pending, 15% flagged, 10% rejected
-                status_roll = random.random()
-                if status_roll < 0.40:
-                    status = LogStatus.confirmed
-                    evidence = EvidenceTier.org_confirmed
-                elif status_roll < 0.75:
-                    status = LogStatus.pending
-                    evidence = EvidenceTier.self_reported
-                elif status_roll < 0.90:
-                    status = LogStatus.flagged
-                    evidence = EvidenceTier.self_reported
-                else:
-                    status = LogStatus.rejected
-                    evidence = EvidenceTier.self_reported
-                
-                log = ServiceLog(
-                    log_id=f"log-{log_counter:03d}",
-                    student_id=student.student_id,
-                    program_id=program_id,
-                    date=log_date,
-                    hours=hours,
-                    description=activity[0],
-                    evidence_tier=evidence,
-                    status=status,
-                    created_at=(now - timedelta(days=days_ago, hours=random.randint(1, 12))).isoformat(),
-                    updated_at=now.isoformat()
-                )
-                logs_data.append(log)
-                
-                # Create verification request for pending logs
-                if status == LogStatus.pending:
-                    vr = VerificationRequest(
-                        request_id=f"vr-{vr_counter:03d}",
-                        log_id=log.log_id,
-                        student_id=student.student_id,
-                        program_id=program_id,
-                        status=VerificationStatus.awaiting_confirmation,
-                        ngo_name=activity[1],
-                        action_description=f"{hours} hours - {activity[0][:30]}..."
-                    )
-                    vr_data.append(vr)
-                    vr_counter += 1
-                
-                log_counter += 1
+        # Seed deterministic fixture service logs and verification requests
+        logs_data = [
+            ServiceLog(log_id="log-001", student_id="std-001", program_id="csc-001", date="2026-01-20", hours=3.0, description="Food bank volunteering at Community Kitchen", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2026-01-20T14:00:00+00:00", updated_at="2026-01-21T09:00:00+00:00"),
+            ServiceLog(log_id="log-002", student_id="std-002", program_id="csc-001", date="2026-01-25", hours=2.5, description="Elderly care visit at Senior Center", evidence_tier=EvidenceTier.self_reported, status=LogStatus.pending, created_at="2026-01-25T13:00:00+00:00", updated_at="2026-01-25T13:00:00+00:00"),
+            ServiceLog(log_id="log-003", student_id="std-002", program_id="gi-002", date="2026-02-06", hours=4.0, description="Tree planting at Central Park", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2026-02-06T15:00:00+00:00", updated_at="2026-02-07T08:00:00+00:00"),
+            ServiceLog(log_id="log-004", student_id="std-003", program_id="hno-003", date="2026-02-08", hours=3.5, description="Homeless shelter meal service", evidence_tier=EvidenceTier.self_reported, status=LogStatus.pending, created_at="2026-02-08T17:00:00+00:00", updated_at="2026-02-08T17:00:00+00:00"),
+            ServiceLog(log_id="log-005", student_id="std-004", program_id="gi-002", date="2026-02-11", hours=1.5, description="River cleanup at Hudson", evidence_tier=EvidenceTier.self_reported, status=LogStatus.flagged, created_at="2026-02-11T16:00:00+00:00", updated_at="2026-02-12T10:00:00+00:00"),
+            ServiceLog(log_id="log-006", student_id="std-005", program_id="hno-003", date="2026-02-14", hours=2.0, description="After-school tutoring", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2026-02-14T14:30:00+00:00", updated_at="2026-02-15T10:00:00+00:00"),
+            ServiceLog(log_id="log-007", student_id="std-006", program_id="csc-001", date="2026-02-20", hours=3.5, description="Soup kitchen service", evidence_tier=EvidenceTier.self_reported, status=LogStatus.pending, created_at="2026-02-20T18:00:00+00:00", updated_at="2026-02-20T18:00:00+00:00"),
+            ServiceLog(log_id="log-008", student_id="std-007", program_id="gi-002", date="2026-03-03", hours=5.0, description="Beach cleanup at Coney Island", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2026-03-03T12:00:00+00:00", updated_at="2026-03-03T15:00:00+00:00"),
+            ServiceLog(log_id="log-009", student_id="std-007", program_id="hno-003", date="2026-03-05", hours=2.5, description="Clothing drive sorting", evidence_tier=EvidenceTier.self_reported, status=LogStatus.rejected, created_at="2026-03-05T11:00:00+00:00", updated_at="2026-03-06T09:00:00+00:00"),
+            ServiceLog(log_id="log-010", student_id="std-008", program_id="hno-003", date="2026-03-12", hours=4.0, description="ESL class assistance", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2026-03-12T10:00:00+00:00", updated_at="2026-03-12T16:00:00+00:00"),
+            ServiceLog(log_id="log-011", student_id="std-009", program_id="gi-002", date="2026-03-17", hours=2.0, description="Recycling education workshop", evidence_tier=EvidenceTier.self_reported, status=LogStatus.pending, created_at="2026-03-17T13:00:00+00:00", updated_at="2026-03-17T13:00:00+00:00"),
+            ServiceLog(log_id="log-012", student_id="std-010", program_id="csc-001", date="2026-03-22", hours=6.0, description="Youth mentoring session", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2026-03-22T09:00:00+00:00", updated_at="2026-03-22T18:00:00+00:00"),
+            ServiceLog(log_id="log-013", student_id="std-011", program_id="csc-001", date="2026-04-01", hours=2.5, description="Community garden maintenance", evidence_tier=EvidenceTier.self_reported, status=LogStatus.flagged, created_at="2026-04-01T14:00:00+00:00", updated_at="2026-04-02T09:30:00+00:00"),
+            ServiceLog(log_id="log-014", student_id="std-012", program_id="hno-003", date="2026-04-06", hours=3.0, description="Job skills workshop facilitation", evidence_tier=EvidenceTier.self_reported, status=LogStatus.pending, created_at="2026-04-06T16:00:00+00:00", updated_at="2026-04-06T16:00:00+00:00"),
+            ServiceLog(log_id="log-015", student_id="std-003", program_id="csc-fall", date="2025-10-05", hours=2.0, description="Food pantry support", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2025-10-05T13:00:00+00:00", updated_at="2025-10-06T08:00:00+00:00"),
+            ServiceLog(log_id="log-016", student_id="std-004", program_id="gi-fall", date="2025-11-02", hours=3.0, description="Campus composting initiative", evidence_tier=EvidenceTier.org_confirmed, status=LogStatus.confirmed, created_at="2025-11-02T13:30:00+00:00", updated_at="2025-11-03T08:30:00+00:00"),
+            ServiceLog(log_id="log-017", student_id="std-001", program_id="summer-prog", date="2026-06-10", hours=4.0, description="Summer orientation volunteering", evidence_tier=EvidenceTier.self_reported, status=LogStatus.pending, created_at="2026-06-10T15:00:00+00:00", updated_at="2026-06-10T15:00:00+00:00"),
+        ]
+
+        vr_data = [
+            VerificationRequest(request_id="vr-001", log_id="log-002", student_id="std-002", program_id="csc-001", status=VerificationStatus.awaiting_confirmation, ngo_name="NYC Elder Care Network", action_description="2.5 hours - Elderly care visit at Senior..."),
+            VerificationRequest(request_id="vr-002", log_id="log-004", student_id="std-003", program_id="hno-003", status=VerificationStatus.awaiting_confirmation, ngo_name="Bowery Mission", action_description="3.5 hours - Homeless shelter meal service..."),
+            VerificationRequest(request_id="vr-003", log_id="log-007", student_id="std-006", program_id="csc-001", status=VerificationStatus.awaiting_confirmation, ngo_name="Holy Apostles Soup Kitchen", action_description="3.5 hours - Soup kitchen service..."),
+            VerificationRequest(request_id="vr-004", log_id="log-011", student_id="std-009", program_id="gi-002", status=VerificationStatus.awaiting_confirmation, ngo_name="GrowNYC", action_description="2.0 hours - Recycling education workshop..."),
+            VerificationRequest(request_id="vr-005", log_id="log-014", student_id="std-012", program_id="hno-003", status=VerificationStatus.awaiting_confirmation, ngo_name="Goodwill NYC", action_description="3.0 hours - Job skills workshop facilitati..."),
+            VerificationRequest(request_id="vr-006", log_id="log-017", student_id="std-001", program_id="summer-prog", status=VerificationStatus.awaiting_confirmation, ngo_name="Summer Volunteer Coalition", action_description="4.0 hours - Summer orientation volunteerin..."),
+        ]
         
         for l in logs_data:
             self.service_logs[l.log_id] = l
