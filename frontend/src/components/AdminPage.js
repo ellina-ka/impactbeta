@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Settings, Save, Check } from 'lucide-react';
 import './styles.css';
 
 function AdminPage({ settings, onSettingsUpdate }) {
   const [universityName, setUniversityName] = useState(settings.university_name);
+  const [dashboardTitle, setDashboardTitle] = useState(settings.dashboard_title || '');
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    setUniversityName(settings.university_name);
+    setDashboardTitle(settings.dashboard_title || '');
+  }, [settings]);
+
   const handleSave = () => {
-    onSettingsUpdate({ university_name: universityName });
+    onSettingsUpdate({
+      university_name: universityName,
+      dashboard_title: dashboardTitle
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -43,7 +52,10 @@ function AdminPage({ settings, onSettingsUpdate }) {
               <button 
                 className={`save-btn ${saved ? 'saved' : ''}`}
                 onClick={handleSave}
-                disabled={universityName === settings.university_name}
+                disabled={
+                  universityName === settings.university_name &&
+                  dashboardTitle === (settings.dashboard_title || '')
+                }
                 data-testid="save-settings-btn"
               >
                 {saved ? (
@@ -52,6 +64,23 @@ function AdminPage({ settings, onSettingsUpdate }) {
                   <><Save size={16} /> Save</>
                 )}
               </button>
+            </div>
+          </div>
+
+          <div className="setting-item">
+            <label htmlFor="dashboardTitle">Dashboard Title</label>
+            <p className="setting-description">
+              This title appears in the dashboard header.
+            </p>
+            <div className="input-group">
+              <input
+                id="dashboardTitle"
+                type="text"
+                value={dashboardTitle}
+                onChange={(e) => setDashboardTitle(e.target.value)}
+                placeholder="Enter dashboard title"
+                data-testid="dashboard-title-input"
+              />
             </div>
           </div>
         </div>
