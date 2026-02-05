@@ -1,5 +1,5 @@
 Place the admin profile photos here if you want to self-host them:
-- /admins/lio.jpg
-- /admins/ellina.jpg
+- /admins/lio.png
+- /admins/ellina.png
 
 The app currently loads remote images first and falls back to these local paths if the remote URLs fail.
