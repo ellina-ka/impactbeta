@@ -9,22 +9,22 @@ const ADMINS = [
   { 
     id: 'lio', 
     name: 'Lio Elalouf', 
-    role: 'Platform Admin',
+    role: 'Program Manager',
     email: 'lio@myimpact.org',
     department: 'Technology',
     joinedDate: 'Sep 2024',
-    permissions: ['Full Access', 'System Settings', 'User Management'],
+    permissions: ['Verify Hours', 'Export Reports', 'Manage Programs'],
     image: publicAssetPath('/admins/lio.png'),
     fallbackImage: publicAssetPath('/admins/lio.png')
   },
   { 
     id: 'ellina', 
     name: 'Ellina Khrais-Azibi', 
-    role: 'Program Admin',
+    role: 'Platform Manager',
     email: 'ellina@myimpact.org',
     department: 'Student Services',
     joinedDate: 'Sep 2024',
-    permissions: ['Verify Hours', 'Export Reports', 'Manage Programs'],
+    permissions: ['Full Access', 'System Settings', 'User Management'],
     image: publicAssetPath('/admins/ellina.png'),
     fallbackImage: publicAssetPath('/admins/ellina.png')
   }
