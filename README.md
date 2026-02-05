@@ -12,6 +12,31 @@ My Impact Beta Version
 
 Admin avatars are served from `${PUBLIC_URL}/admins/lio.png` and `${PUBLIC_URL}/admins/ellina.png`.
 
+## GitHub Pages (Static Demo) — now implemented
+This repo now supports a **static demo mode** for GitHub Pages.
+
+### What is included
+- Static-mode API wrapper: `frontend/src/api/client.js`
+- Demo data source: `frontend/src/data/mockData.js`
+- Components switched away from direct `fetch(...)` calls
+- GitHub Pages workflow: `.github/workflows/deploy-pages.yml`
+- Env defaults:
+  - `frontend/.env.production` -> static mode on
+  - `frontend/.env.development` -> backend mode on (localhost)
+
+### How to deploy with GitHub Pages
+1. In GitHub repo settings, set **Pages source** to **GitHub Actions**.
+2. Push to `main`.
+3. Workflow builds `frontend` and deploys `frontend/build`.
+4. Site URL should be:
+   - `https://<your-github-username>.github.io/impactbeta/`
+
+### Local run modes
+- Full-stack local (with FastAPI backend):
+  - backend on `http://localhost:8001`
+  - run `cd frontend && npm start`
+- Static demo local (no backend):
+  - `cd frontend && REACT_APP_STATIC_MODE=true npm start`
 ## GitHub Pages (Static Demo) — quick start
 If you want this repository to work on GitHub Pages immediately, follow the exact checklist in:
 

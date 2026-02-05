@@ -4,8 +4,7 @@ import ProgramsPanel from './ProgramsPanel';
 import VerificationPanel from './VerificationPanel';
 import ProgramModal from './ProgramModal';
 import './styles.css';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+import { getProgram } from '../api/client';
 
 function Dashboard({ 
   kpis, 
@@ -25,8 +24,7 @@ function Dashboard({
   const handleProgramClick = async (programId) => {
     setLoadingProgram(true);
     try {
-      const response = await fetch(`${API_URL}/api/programs/${programId}`);
-      const data = await response.json();
+      const data = await getProgram(programId);
       setProgramDetails(data);
       setSelectedProgram(programId);
     } catch (error) {

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Search, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, ExternalLink, Calendar } from 'lucide-react';
 import './styles.css';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+import { getStudent } from '../api/client';
 
 function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivities }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,8 +26,7 @@ function ParticipantsPage({ selectedTerm, students, loading, onNavigateToActivit
     setLoadingDetails(true);
     setSelectedStudent(studentId);
     try {
-      const response = await fetch(`${API_URL}/api/students/${studentId}?term_id=${selectedTerm}`);
-      const data = await response.json();
+      const data = await getStudent(studentId, selectedTerm);
       setStudentDetails(data);
     } catch (error) {
       console.error('Error fetching student details:', error);
