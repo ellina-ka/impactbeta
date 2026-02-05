@@ -41,12 +41,16 @@ function Dashboard({
     setProgramDetails(null);
   };
 
+  const brandingLabel = [settings?.university_name, settings?.dashboard_title]
+    .filter(Boolean)
+    .join(' – ');
+
   return (
     <div className="dashboard" data-testid="dashboard">
       {/* Header */}
       <div className="dashboard-header">
         <h1 className="dashboard-title" data-testid="dashboard-title">
-          {settings.university_name} – {settings.dashboard_title || 'Test Pilot Dashboard'}
+          {brandingLabel}
         </h1>
       </div>
 
