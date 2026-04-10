@@ -1,224 +1,98 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
-import Dashboard from './components/Dashboard';
-import ActivitiesPage from './components/ActivitiesPage';
-import ParticipantsPage from './components/ParticipantsPage';
-import ReportsPage from './components/ReportsPage';
-import AdminPage from './components/AdminPage';
-import Toast from './components/Toast';
+import AdminDashboard from './components/workflow/AdminDashboard';
+import StudentDashboard from './components/workflow/StudentDashboard';
+import NgoDashboard from './components/workflow/NgoDashboard';
 import {
-  getTerms,
-  getSettings,
-  getKpis,
-  getPrograms,
-  getVerificationRequests,
-  getStudents,
-  confirmVerification,
-  rejectVerification,
-  flagVerification,
-  updateSettings,
-} from './api/client';
+  getApplications,
+  getConventions,
+  submitApplication,
+  validateApplication,
+  rejectApplication
+} from './api/workflowService';
 import './App.css';
 
-function App() {
-  const [activePage, setActivePage] = useState('dashboard');
-  const [selectedTerm, setSelectedTerm] = useState(() => {
-    return localStorage.getItem('selectedTerm') || 'spring-2026';
-  });
-  const [terms, setTerms] = useState([]);
-  const [settings, setSettings] = useState({ university_name: '', dashboard_title: '' });
-  const [kpis, setKpis] = useState(null);
-  const [programs, setPrograms] = useState([]);
-  const [verificationRequests, setVerificationRequests] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
+const ROLES = ['school_admin', 'student', 'ngo_admin'];
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+function App() {
+  const [currentRole, setCurrentRole] = useState('school_admin');
+  const [applications, setApplications] = useState([]);
+  const [conventions, setConventions] = useState([]);
+
+  const reloadData = async () => {
+    const [apps, convs] = await Promise.all([getApplications(), getConventions()]);
+    setApplications(apps);
+    setConventions(convs);
   };
 
   useEffect(() => {
-    localStorage.setItem('selectedTerm', selectedTerm);
-  }, [selectedTerm]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [termsData, settingsData] = await Promise.all([
-          getTerms(),
-          getSettings()
-        ]);
-
-        setTerms(termsData);
-        setSettings({
-          university_name: settingsData.university_name,
-          dashboard_title: settingsData.dashboard_title || 'Test Pilot Dashboard'
-        });
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-      }
-    };
-    fetchData();
+    reloadData();
   }, []);
 
-  const fetchTermData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [kpisData, programsData, vrData, studentsData] = await Promise.all([
-        getKpis(selectedTerm),
-        getPrograms(selectedTerm),
-        getVerificationRequests(selectedTerm, 'awaiting_confirmation'),
-        getStudents(selectedTerm)
-      ]);
-
-      setKpis(kpisData);
-      setPrograms(programsData);
-      setVerificationRequests(vrData);
-      setStudents(studentsData);
-    } catch (error) {
-      console.error('Error fetching term data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedTerm]);
-
-  useEffect(() => {
-    fetchTermData();
-  }, [fetchTermData]);
-
-  const handleConfirm = async (requestId) => {
-    try {
-      const data = await confirmVerification(requestId);
-      showToast(`Verified ${data.hours_added || 0} hours successfully!`, 'success');
-      fetchTermData();
-    } catch (error) {
-      console.error('Error confirming verification:', error);
-      showToast('Failed to confirm verification', 'error');
-    }
+  const handleSubmitApplication = async (payload) => {
+    await submitApplication(payload);
+    await reloadData();
   };
 
-  const handleReject = async (requestId, reason) => {
-    try {
-      await rejectVerification(requestId, reason);
-      showToast('Request rejected', 'warning');
-      fetchTermData();
-    } catch (error) {
-      console.error('Error rejecting verification:', error);
-      showToast('Failed to reject verification', 'error');
-    }
+  const handleValidate = async (id) => {
+    await validateApplication(id);
+    await reloadData();
   };
 
-  const handleFlag = async (requestId, reason) => {
-    try {
-      await flagVerification(requestId, reason);
-      showToast('Request flagged for review', 'warning');
-      fetchTermData();
-    } catch (error) {
-      console.error('Error flagging verification:', error);
-      showToast('Failed to flag verification', 'error');
-    }
+  const handleReject = async (id) => {
+    await rejectApplication(id);
+    await reloadData();
   };
 
-  const handleSettingsUpdate = async (newSettings) => {
-    try {
-      const data = await updateSettings(newSettings);
-      setSettings({
-        university_name: data.university_name,
-        dashboard_title: data.dashboard_title || 'Test Pilot Dashboard'
-      });
-      showToast('Settings updated', 'success');
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      showToast('Failed to update settings', 'error');
-    }
-  };
+  const roleApplications = useMemo(() => {
+    if (currentRole === 'student') return applications.slice(0, 1);
+    return applications;
+  }, [applications, currentRole]);
 
-  const handleExport = (type) => {
-    showToast(`${type} exported successfully!`, 'success');
-  };
-
-  const renderPage = () => {
-    switch (activePage) {
-      case 'dashboard':
-        return (
-          <Dashboard
-            kpis={kpis}
-            programs={programs}
-            verificationRequests={verificationRequests}
-            onConfirm={handleConfirm}
-            onReject={handleReject}
-            onFlag={handleFlag}
-            loading={loading}
-            settings={settings}
-            selectedTerm={selectedTerm}
-          />
-        );
-      case 'activities':
-        return (
-          <ActivitiesPage
-            selectedTerm={selectedTerm}
-            onActionComplete={(action, hours) => {
-              if (action === 'confirm') {
-                showToast(`Verified ${hours} hours successfully!`, 'success');
-              } else if (action === 'reject') {
-                showToast('Request rejected', 'warning');
-              } else if (action === 'flag') {
-                showToast('Request flagged for review', 'warning');
-              }
-              fetchTermData();
-            }}
-          />
-        );
-      case 'participants':
-        return (
-          <ParticipantsPage
-            selectedTerm={selectedTerm}
-            students={students}
-            loading={loading}
-            onNavigateToActivities={() => setActivePage('activities')}
-          />
-        );
-      case 'reports':
-        return (
-          <ReportsPage
-            selectedTerm={selectedTerm}
-            terms={terms}
-            onExport={handleExport}
-          />
-        );
-      case 'admin':
-        return (
-          <AdminPage
-            settings={settings}
-            onSettingsUpdate={handleSettingsUpdate}
-          />
-        );
-      default:
-        return null;
+  const roleConventions = useMemo(() => {
+    if (currentRole === 'ngo_admin') {
+      return conventions.filter((item) => item.ngoName.toLowerCase().includes('croix-rouge'));
     }
+    if (currentRole === 'student') {
+      const currentStudent = roleApplications[0]?.studentEmail;
+      return conventions.filter((item) => item.studentEmail === currentStudent);
+    }
+    return conventions;
+  }, [conventions, currentRole, roleApplications]);
+
+  const renderDashboard = () => {
+    if (currentRole === 'school_admin') {
+      return (
+        <AdminDashboard
+          applications={roleApplications}
+          conventions={roleConventions}
+          onValidate={handleValidate}
+          onReject={handleReject}
+        />
+      );
+    }
+
+    if (currentRole === 'student') {
+      return (
+        <StudentDashboard
+          applications={roleApplications}
+          conventions={roleConventions}
+          onSubmitApplication={handleSubmitApplication}
+        />
+      );
+    }
+
+    return <NgoDashboard conventions={roleConventions} />;
   };
 
   return (
     <div className="app-container" data-testid="app-container">
-      <Sidebar
-        activePage={activePage}
-        onPageChange={setActivePage}
-        settings={settings}
-      />
+      <Sidebar currentRole={currentRole} />
       <div className="main-content">
-        <Topbar
-          terms={terms}
-          selectedTerm={selectedTerm}
-          onTermChange={setSelectedTerm}
-        />
-        <div className="page-content">
-          {renderPage()}
-        </div>
+        <Topbar currentRole={currentRole} roles={ROLES} onRoleChange={setCurrentRole} />
+        <div className="page-content">{renderDashboard()}</div>
       </div>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

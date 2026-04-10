@@ -1,55 +1,38 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Users, 
-  FileText, 
-  Settings,
-  Heart
-} from 'lucide-react';
+import { LayoutDashboard, Heart, User, Building2 } from 'lucide-react';
 import './styles.css';
 
-const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'activities', label: 'Activities', icon: Calendar },
-  { id: 'participants', label: 'Participants', icon: Users },
-  { id: 'reports', label: 'Reports', icon: FileText },
-  { id: 'admin', label: 'Admin', icon: Settings },
-];
+const roleLabels = {
+  school_admin: 'School admin',
+  student: 'Student',
+  ngo_admin: 'NGO admin'
+};
 
-function Sidebar({ activePage, onPageChange, settings }) {
+function Sidebar({ currentRole }) {
   return (
     <aside className="sidebar" data-testid="sidebar">
-      {/* Logo Area */}
       <div className="sidebar-logo">
         <div className="logo-icon">
           <Heart size={28} strokeWidth={2.5} />
         </div>
         <div className="logo-text">
-          <span className="logo-title">{settings?.dashboard_title}</span>
-          <span className="logo-subtitle">{settings?.university_name}</span>
+          <span className="logo-title">MyImpact</span>
+          <span className="logo-subtitle">Sciences Po • Civic Pathway</span>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="sidebar-nav">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
-            <button
-              key={item.id}
-              className={`nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => onPageChange(item.id)}
-              data-testid={`nav-${item.id}`}
-            >
-              <Icon size={20} />
-              <span>{item.label}</span>
-              {isActive && <div className="active-indicator" />}
-            </button>
-          );
-        })}
+        <button className="nav-item active" type="button">
+          <LayoutDashboard size={20} />
+          <span>Dashboard</span>
+          <div className="active-indicator" />
+        </button>
       </nav>
+
+      <div className="sidebar-role-hint">
+        {currentRole === 'student' ? <User size={16} /> : <Building2 size={16} />}
+        <span>Viewing as {roleLabels[currentRole]}</span>
+      </div>
     </aside>
   );
 }
