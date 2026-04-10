@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import StatusBadge from './StatusBadge';
+import { useI18n } from '../../i18n/I18nContext';
 
 const EMPTY_FORM = {
   studentName: '',
@@ -12,6 +13,7 @@ const EMPTY_FORM = {
 };
 
 function StudentDashboard({ applications, conventions, onSubmitApplication }) {
+  const { t } = useI18n();
   const [form, setForm] = useState(EMPTY_FORM);
 
   const handleChange = (event) => {
@@ -32,23 +34,23 @@ function StudentDashboard({ applications, conventions, onSubmitApplication }) {
   return (
     <div className="workflow-layout two-columns">
       <section className="workflow-card">
-        <h2>My Request</h2>
+        <h2>{t('student.sections.my_request')}</h2>
         <form className="student-form" onSubmit={handleSubmit}>
-          <input required name="studentName" value={form.studentName} onChange={handleChange} placeholder="Student name" />
-          <input required type="email" name="studentEmail" value={form.studentEmail} onChange={handleChange} placeholder="Student email" />
-          <input required name="ngoName" value={form.ngoName} onChange={handleChange} placeholder="NGO / organization" />
-          <textarea required name="missionDescription" value={form.missionDescription} onChange={handleChange} placeholder="Mission description" />
+          <input required name="studentName" value={form.studentName} onChange={handleChange} placeholder={t('student.fields.student_name')} />
+          <input required type="email" name="studentEmail" value={form.studentEmail} onChange={handleChange} placeholder={t('student.fields.student_email')} />
+          <input required name="ngoName" value={form.ngoName} onChange={handleChange} placeholder={t('student.fields.ngo_name')} />
+          <textarea required name="missionDescription" value={form.missionDescription} onChange={handleChange} placeholder={t('student.fields.mission_description')} />
           <div className="inline-fields">
             <input required type="date" name="startDate" value={form.startDate} onChange={handleChange} />
             <input required type="date" name="endDate" value={form.endDate} onChange={handleChange} />
-            <input required type="number" min="1" name="targetHours" value={form.targetHours} onChange={handleChange} placeholder="Hours" />
+            <input required type="number" min="1" name="targetHours" value={form.targetHours} onChange={handleChange} placeholder={t('student.fields.target_hours')} />
           </div>
-          <button type="submit" className="table-btn success">Submit request</button>
+          <button type="submit" className="table-btn success">{t('student.actions.submit_request')}</button>
         </form>
 
         {myApplication && (
           <div className="detail-box">
-            <h3>Current status</h3>
+            <h3>{t('student.current_status')}</h3>
             <p><strong>{myApplication.ngoName}</strong></p>
             <p>{myApplication.missionDescription}</p>
             <StatusBadge status={myApplication.status} />
@@ -57,18 +59,18 @@ function StudentDashboard({ applications, conventions, onSubmitApplication }) {
       </section>
 
       <section className="workflow-card">
-        <h2>My Convention</h2>
+        <h2>{t('student.sections.my_convention')}</h2>
         {myConvention ? (
           <div className="detail-box">
-            <p><strong>ID:</strong> {myConvention.id}</p>
-            <p><strong>Student:</strong> {myConvention.studentName}</p>
-            <p><strong>NGO:</strong> {myConvention.ngoName}</p>
-            <p><strong>Period:</strong> {myConvention.startDate} → {myConvention.endDate}</p>
-            <p><strong>Target hours:</strong> {myConvention.targetHours}</p>
+            <p><strong>{t('student.labels.id')}:</strong> {myConvention.id}</p>
+            <p><strong>{t('student.labels.student')}:</strong> {myConvention.studentName}</p>
+            <p><strong>{t('student.labels.ngo')}:</strong> {myConvention.ngoName}</p>
+            <p><strong>{t('student.labels.period')}:</strong> {myConvention.startDate} {t('common.date_separator')} {myConvention.endDate}</p>
+            <p><strong>{t('student.labels.target_hours')}:</strong> {myConvention.targetHours}</p>
             <StatusBadge status={myConvention.status} />
           </div>
         ) : (
-          <p>No convention generated yet. It will appear after admin validation.</p>
+          <p>{t('student.no_convention')}</p>
         )}
       </section>
     </div>

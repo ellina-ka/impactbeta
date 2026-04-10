@@ -11,11 +11,12 @@ import {
   validateApplication,
   rejectApplication
 } from './api/workflowService';
+import { I18nProvider } from './i18n/I18nContext';
 import './App.css';
 
 const ROLES = ['school_admin', 'student', 'ngo_admin'];
 
-function App() {
+function AppContent() {
   const [currentRole, setCurrentRole] = useState('school_admin');
   const [applications, setApplications] = useState([]);
   const [conventions, setConventions] = useState([]);
@@ -94,6 +95,14 @@ function App() {
         <div className="page-content">{renderDashboard()}</div>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <I18nProvider>
+      <AppContent />
+    </I18nProvider>
   );
 }
 
