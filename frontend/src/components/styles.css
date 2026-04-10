@@ -2946,3 +2946,141 @@
   font-size: 14px;
   background: #fff;
 }
+
+/* Workflow demo */
+.sidebar-role-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 12px 16px;
+  margin: 0 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.workflow-layout {
+  display: grid;
+  gap: 20px;
+}
+
+.workflow-layout.two-columns {
+  grid-template-columns: 1.2fr 1fr;
+}
+
+.workflow-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.workflow-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.workflow-table th,
+.workflow-table td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.table-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.table-btn.success {
+  border-color: #047857;
+  color: #047857;
+}
+
+.table-btn.danger {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.table-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-badge {
+  display: inline-block;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  text-transform: capitalize;
+}
+
+.status-pending,
+.status-draft {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.status-validated,
+.status-ready,
+.status-active {
+  background: #ecfdf3;
+  color: #047857;
+}
+
+.status-rejected {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.student-form {
+  display: grid;
+  gap: 10px;
+}
+
+.student-form input,
+.student-form textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.student-form textarea {
+  min-height: 90px;
+}
+
+.inline-fields {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.detail-box {
+  margin-top: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.ngo-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
