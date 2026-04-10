@@ -1,19 +1,16 @@
 import React from 'react';
 import { LayoutDashboard, Heart, User, Building2 } from 'lucide-react';
+import { useI18n } from '../i18n/I18nContext';
 import './styles.css';
 
-const roleLabels = {
-  school_admin: 'School admin',
-  student: 'Student',
-  ngo_admin: 'NGO admin'
-};
-
 function Sidebar({ currentRole }) {
+  const { t } = useI18n();
+
   return (
     <aside className="sidebar" data-testid="sidebar">
       <div className="sidebar-logo">
         <div className="logo-icon">
-          <Heart size={28} strokeWidth={2.5} />
+          <Heart size={22} strokeWidth={2.5} />
         </div>
         <div className="logo-text">
           <span className="logo-title">MyImpact</span>
@@ -23,15 +20,15 @@ function Sidebar({ currentRole }) {
 
       <nav className="sidebar-nav">
         <button className="nav-item active" type="button">
-          <LayoutDashboard size={20} />
-          <span>Dashboard</span>
+          <LayoutDashboard size={18} />
+          <span>{t('sidebar.dashboard')}</span>
           <div className="active-indicator" />
         </button>
       </nav>
 
       <div className="sidebar-role-hint">
-        {currentRole === 'student' ? <User size={16} /> : <Building2 size={16} />}
-        <span>Viewing as {roleLabels[currentRole]}</span>
+        {currentRole === 'student' ? <User size={15} /> : <Building2 size={15} />}
+        <span>{t('sidebar.viewing_as', { role: t(`roles.${currentRole}`) })}</span>
       </div>
     </aside>
   );
