@@ -1,59 +1,151 @@
-import { initialApplications, initialConventions } from '../data/workflowMockData';
-import { generateConventionFromApplication } from '../utils/convention';
+import { supabase } from '../lib/supabase';
 
-const clone = (value) => JSON.parse(JSON.stringify(value));
+const normalizeHours = (value) => Number(value || 0);
 
-const db = {
-  applications: clone(initialApplications),
-  conventions: clone(initialConventions)
-};
-
-const delay = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
-
-export async function getApplications() {
-  await delay();
-  return clone(db.applications);
+function mapApplicationRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    studentName: row.student_name,
+    studentEmail: row.student_email,
+    ngoName: row.ngo_name,
+    missionDescription: row.mission_description,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    targetHours: normalizeHours(row.target_hours),
+    status: row.status
+  };
 }
 
-export async function getConventions() {
-  await delay();
-  return clone(db.conventions);
+function mapConventionRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    applicationId: row.application_id,
+    studentName: row.student_name,
+    studentEmail: row.student_email,
+    ngoName: row.ngo_name,
+    missionDescription: row.mission_description,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    targetHours: normalizeHours(row.target_hours),
+    status: row.status
+  };
+}
+
+function mapApplicationPayloadToInsert(payload) {
+  return {
+    student_name: payload.studentName,
+    student_email: payload.studentEmail,
+    ngo_name: payload.ngoName,
+    mission_description: payload.missionDescription,
+    start_date: payload.startDate,
+    end_date: payload.endDate,
+    target_hours: normalizeHours(payload.targetHours),
+    status: payload.status || 'pending'
+  };
+}
+
+function mapApplicationToConventionInsert(application) {
+  return {
+    application_id: application.id,
+    student_name: application.studentName,
+    student_email: application.studentEmail,
+    ngo_name: application.ngoName,
+    mission_description: application.missionDescription,
+    start_date: application.startDate,
+    end_date: application.endDate,
+    target_hours: normalizeHours(application.targetHours),
+    status: 'ready'
+  };
+}
+
+function throwIfError(error, context) {
+  if (error) throw new Error(`${context}: ${error.message}`);
+}
+
+export async function getApplications() {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('*')
+    .order('id', { ascending: false });
+
+  throwIfError(error, 'Failed to fetch applications');
+  return (data || []).map(mapApplicationRow);
+}
+
+export async function createApplication(payload) {
+  const { data, error } = await supabase
+    .from('applications')
+    .insert([mapApplicationPayloadToInsert(payload)])
+    .select('*')
+    .single();
+
+  throwIfError(error, 'Failed to create application');
+  return mapApplicationRow(data);
 }
 
 export async function submitApplication(payload) {
-  await delay();
-  const application = {
-    id: `app-${Date.now()}`,
-    ...payload,
-    targetHours: Number(payload.targetHours),
-    status: 'pending'
-  };
+  return createApplication(payload);
+}
 
-  db.applications = [application, ...db.applications];
-  return clone(application);
+export async function getConventions() {
+  const { data, error } = await supabase
+    .from('conventions')
+    .select('*')
+    .order('id', { ascending: false });
+
+  throwIfError(error, 'Failed to fetch conventions');
+  return (data || []).map(mapConventionRow);
+}
+
+export async function createConventionFromApplication(application) {
+  const insertPayload = mapApplicationToConventionInsert(application);
+
+  const { data, error } = await supabase
+    .from('conventions')
+    .insert([insertPayload])
+    .select('*')
+    .single();
+
+  throwIfError(error, 'Failed to create convention');
+  return mapConventionRow(data);
 }
 
 export async function validateApplication(id) {
-  await delay();
-  const app = db.applications.find((item) => item.id === id);
-  if (!app) return null;
+  const { data: updatedRow, error: updateError } = await supabase
+    .from('applications')
+    .update({ status: 'validated' })
+    .eq('id', id)
+    .select('*')
+    .single();
 
-  app.status = 'validated';
+  throwIfError(updateError, 'Failed to validate application');
+  const application = mapApplicationRow(updatedRow);
 
-  const existingConvention = db.conventions.find((item) => item.applicationId === app.id);
+  const { data: existingConvention, error: existingError } = await supabase
+    .from('conventions')
+    .select('id')
+    .eq('application_id', id)
+    .maybeSingle();
+
+  throwIfError(existingError, 'Failed to check existing convention');
+
   if (!existingConvention) {
-    const convention = generateConventionFromApplication(app);
-    db.conventions = [convention, ...db.conventions];
+    await createConventionFromApplication(application);
   }
 
-  return clone(app);
+  return application;
 }
 
 export async function rejectApplication(id) {
-  await delay();
-  const app = db.applications.find((item) => item.id === id);
-  if (!app) return null;
+  const { data, error } = await supabase
+    .from('applications')
+    .update({ status: 'rejected' })
+    .eq('id', id)
+    .select('*')
+    .single();
 
-  app.status = 'rejected';
-  return clone(app);
+  throwIfError(error, 'Failed to reject application');
+  return mapApplicationRow(data);
 }
