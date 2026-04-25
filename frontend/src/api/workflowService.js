@@ -1,4 +1,11 @@
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { initialApplications, initialConventions } from '../data/workflowMockData';
+
+const clone = (value) => JSON.parse(JSON.stringify(value));
+const localStore = {
+  applications: clone(initialApplications),
+  conventions: clone(initialConventions)
+};
 
 const normalizeHours = (value) => Number(value || 0);
 
@@ -65,6 +72,10 @@ function throwIfError(error, context) {
 }
 
 export async function getApplications() {
+  if (!isSupabaseConfigured) {
+    return clone(localStore.applications).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+  }
+
   const { data, error } = await supabase
     .from('applications')
     .select('*')
@@ -75,6 +86,17 @@ export async function getApplications() {
 }
 
 export async function createApplication(payload) {
+  if (!isSupabaseConfigured) {
+    const created = {
+      ...payload,
+      id: `app-${Date.now()}`,
+      status: payload.status || 'pending',
+      targetHours: normalizeHours(payload.targetHours)
+    };
+    localStore.applications.unshift(created);
+    return clone(created);
+  }
+
   const { data, error } = await supabase
     .from('applications')
     .insert([mapApplicationPayloadToInsert(payload)])
@@ -90,6 +112,10 @@ export async function submitApplication(payload) {
 }
 
 export async function getConventions() {
+  if (!isSupabaseConfigured) {
+    return clone(localStore.conventions).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+  }
+
   const { data, error } = await supabase
     .from('conventions')
     .select('*')
@@ -113,6 +139,33 @@ export async function createConventionFromApplication(application) {
 }
 
 export async function validateApplication(id) {
+  if (!isSupabaseConfigured) {
+    const application = localStore.applications.find((item) => String(item.id) === String(id));
+    if (!application) throw new Error('Failed to validate application: not found');
+
+    application.status = 'validated';
+    const existingConvention = localStore.conventions.find(
+      (item) => String(item.applicationId) === String(id)
+    );
+
+    if (!existingConvention) {
+      localStore.conventions.unshift({
+        id: `conv-${Date.now()}`,
+        applicationId: application.id,
+        studentName: application.studentName,
+        studentEmail: application.studentEmail,
+        ngoName: application.ngoName,
+        missionDescription: application.missionDescription,
+        startDate: application.startDate,
+        endDate: application.endDate,
+        targetHours: normalizeHours(application.targetHours),
+        status: 'ready'
+      });
+    }
+
+    return clone(application);
+  }
+
   const { data: updatedRow, error: updateError } = await supabase
     .from('applications')
     .update({ status: 'validated' })
@@ -139,6 +192,13 @@ export async function validateApplication(id) {
 }
 
 export async function rejectApplication(id) {
+  if (!isSupabaseConfigured) {
+    const application = localStore.applications.find((item) => String(item.id) === String(id));
+    if (!application) throw new Error('Failed to reject application: not found');
+    application.status = 'rejected';
+    return clone(application);
+  }
+
   const { data, error } = await supabase
     .from('applications')
     .update({ status: 'rejected' })
