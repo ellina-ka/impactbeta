@@ -7,6 +7,11 @@ const localStore = {
   conventions: clone(initialConventions)
 };
 
+// Demo deploys should keep working even if Supabase env vars exist but the
+// backing tables/policies are not ready yet. Set REACT_APP_DEMO_FALLBACK=false
+// when you want Supabase errors to fail hard during production integration.
+const DEMO_FALLBACK = process.env.REACT_APP_DEMO_FALLBACK !== 'false';
+
 const normalizeHours = (value) => Number(value || 0);
 
 function mapApplicationRow(row) {
@@ -71,40 +76,98 @@ function throwIfError(error, context) {
   if (error) throw new Error(`${context}: ${error.message}`);
 }
 
-export async function getApplications() {
-  if (!isSupabaseConfigured) {
-    return clone(localStore.applications).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+function warnAndFallback(context, error) {
+  if (!DEMO_FALLBACK) throw error;
+  // eslint-disable-next-line no-console
+  console.warn(`${context}; using local demo workflow data instead.`, error);
+}
+
+function getLocalApplications() {
+  return clone(localStore.applications).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+}
+
+function getLocalConventions() {
+  return clone(localStore.conventions).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+}
+
+function createLocalApplication(payload) {
+  const created = {
+    ...payload,
+    id: `app-${Date.now()}`,
+    status: payload.status || 'pending',
+    targetHours: normalizeHours(payload.targetHours)
+  };
+  localStore.applications.unshift(created);
+  return clone(created);
+}
+
+function validateLocalApplication(id) {
+  const application = localStore.applications.find((item) => String(item.id) === String(id));
+  if (!application) throw new Error('Failed to validate application: not found');
+
+  application.status = 'validated';
+  const existingConvention = localStore.conventions.find(
+    (item) => String(item.applicationId) === String(id)
+  );
+
+  if (!existingConvention) {
+    localStore.conventions.unshift({
+      id: `conv-${Date.now()}`,
+      applicationId: application.id,
+      studentName: application.studentName,
+      studentEmail: application.studentEmail,
+      ngoName: application.ngoName,
+      missionDescription: application.missionDescription,
+      startDate: application.startDate,
+      endDate: application.endDate,
+      targetHours: normalizeHours(application.targetHours),
+      status: 'ready'
+    });
   }
 
-  const { data, error } = await supabase
-    .from('applications')
-    .select('*')
-    .order('id', { ascending: false });
+  return clone(application);
+}
 
-  throwIfError(error, 'Failed to fetch applications');
-  return (data || []).map(mapApplicationRow);
+function rejectLocalApplication(id) {
+  const application = localStore.applications.find((item) => String(item.id) === String(id));
+  if (!application) throw new Error('Failed to reject application: not found');
+  application.status = 'rejected';
+  return clone(application);
+}
+
+export async function getApplications() {
+  if (!isSupabaseConfigured) return getLocalApplications();
+
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select('*')
+      .order('id', { ascending: false });
+
+    throwIfError(error, 'Failed to fetch applications');
+    return (data || []).map(mapApplicationRow);
+  } catch (error) {
+    warnAndFallback('Failed to fetch applications', error);
+    return getLocalApplications();
+  }
 }
 
 export async function createApplication(payload) {
-  if (!isSupabaseConfigured) {
-    const created = {
-      ...payload,
-      id: `app-${Date.now()}`,
-      status: payload.status || 'pending',
-      targetHours: normalizeHours(payload.targetHours)
-    };
-    localStore.applications.unshift(created);
-    return clone(created);
+  if (!isSupabaseConfigured) return createLocalApplication(payload);
+
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .insert([mapApplicationPayloadToInsert(payload)])
+      .select('*')
+      .single();
+
+    throwIfError(error, 'Failed to create application');
+    return mapApplicationRow(data);
+  } catch (error) {
+    warnAndFallback('Failed to create application', error);
+    return createLocalApplication(payload);
   }
-
-  const { data, error } = await supabase
-    .from('applications')
-    .insert([mapApplicationPayloadToInsert(payload)])
-    .select('*')
-    .single();
-
-  throwIfError(error, 'Failed to create application');
-  return mapApplicationRow(data);
 }
 
 export async function submitApplication(payload) {
@@ -112,17 +175,20 @@ export async function submitApplication(payload) {
 }
 
 export async function getConventions() {
-  if (!isSupabaseConfigured) {
-    return clone(localStore.conventions).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+  if (!isSupabaseConfigured) return getLocalConventions();
+
+  try {
+    const { data, error } = await supabase
+      .from('conventions')
+      .select('*')
+      .order('id', { ascending: false });
+
+    throwIfError(error, 'Failed to fetch conventions');
+    return (data || []).map(mapConventionRow);
+  } catch (error) {
+    warnAndFallback('Failed to fetch conventions', error);
+    return getLocalConventions();
   }
-
-  const { data, error } = await supabase
-    .from('conventions')
-    .select('*')
-    .order('id', { ascending: false });
-
-  throwIfError(error, 'Failed to fetch conventions');
-  return (data || []).map(mapConventionRow);
 }
 
 export async function createConventionFromApplication(application) {
@@ -139,73 +205,53 @@ export async function createConventionFromApplication(application) {
 }
 
 export async function validateApplication(id) {
-  if (!isSupabaseConfigured) {
-    const application = localStore.applications.find((item) => String(item.id) === String(id));
-    if (!application) throw new Error('Failed to validate application: not found');
+  if (!isSupabaseConfigured) return validateLocalApplication(id);
 
-    application.status = 'validated';
-    const existingConvention = localStore.conventions.find(
-      (item) => String(item.applicationId) === String(id)
-    );
+  try {
+    const { data: updatedRow, error: updateError } = await supabase
+      .from('applications')
+      .update({ status: 'validated' })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    throwIfError(updateError, 'Failed to validate application');
+    const application = mapApplicationRow(updatedRow);
+
+    const { data: existingConvention, error: existingError } = await supabase
+      .from('conventions')
+      .select('id')
+      .eq('application_id', id)
+      .maybeSingle();
+
+    throwIfError(existingError, 'Failed to check existing convention');
 
     if (!existingConvention) {
-      localStore.conventions.unshift({
-        id: `conv-${Date.now()}`,
-        applicationId: application.id,
-        studentName: application.studentName,
-        studentEmail: application.studentEmail,
-        ngoName: application.ngoName,
-        missionDescription: application.missionDescription,
-        startDate: application.startDate,
-        endDate: application.endDate,
-        targetHours: normalizeHours(application.targetHours),
-        status: 'ready'
-      });
+      await createConventionFromApplication(application);
     }
 
-    return clone(application);
+    return application;
+  } catch (error) {
+    warnAndFallback('Failed to validate application', error);
+    return validateLocalApplication(id);
   }
-
-  const { data: updatedRow, error: updateError } = await supabase
-    .from('applications')
-    .update({ status: 'validated' })
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  throwIfError(updateError, 'Failed to validate application');
-  const application = mapApplicationRow(updatedRow);
-
-  const { data: existingConvention, error: existingError } = await supabase
-    .from('conventions')
-    .select('id')
-    .eq('application_id', id)
-    .maybeSingle();
-
-  throwIfError(existingError, 'Failed to check existing convention');
-
-  if (!existingConvention) {
-    await createConventionFromApplication(application);
-  }
-
-  return application;
 }
 
 export async function rejectApplication(id) {
-  if (!isSupabaseConfigured) {
-    const application = localStore.applications.find((item) => String(item.id) === String(id));
-    if (!application) throw new Error('Failed to reject application: not found');
-    application.status = 'rejected';
-    return clone(application);
+  if (!isSupabaseConfigured) return rejectLocalApplication(id);
+
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ status: 'rejected' })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    throwIfError(error, 'Failed to reject application');
+    return mapApplicationRow(data);
+  } catch (error) {
+    warnAndFallback('Failed to reject application', error);
+    return rejectLocalApplication(id);
   }
-
-  const { data, error } = await supabase
-    .from('applications')
-    .update({ status: 'rejected' })
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  throwIfError(error, 'Failed to reject application');
-  return mapApplicationRow(data);
 }

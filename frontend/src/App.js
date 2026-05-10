@@ -20,11 +20,20 @@ function AppContent() {
   const [currentRole, setCurrentRole] = useState('school_admin');
   const [applications, setApplications] = useState([]);
   const [conventions, setConventions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const reloadData = async () => {
-    const [apps, convs] = await Promise.all([getApplications(), getConventions()]);
-    setApplications(apps);
-    setConventions(convs);
+    setErrorMessage('');
+    try {
+      const [apps, convs] = await Promise.all([getApplications(), getConventions()]);
+      setApplications(apps);
+      setConventions(convs);
+    } catch (error) {
+      setErrorMessage(error.message || 'The workflow data could not be loaded.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -92,7 +101,16 @@ function AppContent() {
       <Sidebar currentRole={currentRole} />
       <div className="main-content">
         <Topbar currentRole={currentRole} roles={ROLES} onRoleChange={setCurrentRole} />
-        <div className="page-content">{renderDashboard()}</div>
+        <div className="page-content">
+          {errorMessage && (
+            <div className="workflow-alert" role="alert">
+              {errorMessage}
+            </div>
+          )}
+          {isLoading ? (
+            <div className="workflow-card">Loading demo workflow...</div>
+          ) : renderDashboard()}
+        </div>
       </div>
     </div>
   );
