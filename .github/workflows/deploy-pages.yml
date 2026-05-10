@@ -26,11 +26,12 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         working-directory: frontend
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Build
         working-directory: frontend
         env:
           REACT_APP_STATIC_MODE: 'true'
+          REACT_APP_DEMO_FALLBACK: 'true'
           PUBLIC_URL: /impactbeta
         run: npm run build
       - name: Upload Pages artifact

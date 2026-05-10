@@ -3465,3 +3465,13 @@
     gap: 6px;
   }
 }
+
+.workflow-alert {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #f5c2c7;
+  border-radius: 12px;
+  color: #842029;
+  background: #f8d7da;
+  font-weight: 600;
+}
