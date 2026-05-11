@@ -2,6 +2,47 @@ import React, { useMemo } from 'react';
 import StatusBadge from './StatusBadge';
 import { useI18n } from '../../i18n/I18nContext';
 
+const WORKFLOW_STEPS = ['submit', 'validate', 'generate', 'sign', 'complete'];
+
+function getWorkflowProgress(status, hasConvention = false) {
+  if (status === 'rejected') return 1;
+  if (status === 'active' || status === 'complete' || status === 'completed') return 5;
+  if (status === 'signed') return 4;
+  if (status === 'ready' || hasConvention) return 3;
+  if (status === 'validated') return 2;
+  return 1;
+}
+
+function WorkflowTimeline({ status, hasConvention = false }) {
+  const { t } = useI18n();
+  const progress = getWorkflowProgress(status, hasConvention);
+
+  return (
+    <ol className="workflow-timeline" aria-label={t('workflow.timeline_label')}>
+      {WORKFLOW_STEPS.map((step, index) => {
+        const stepNumber = index + 1;
+        const state = stepNumber < progress ? 'complete' : stepNumber === progress ? 'current' : 'upcoming';
+        return (
+          <li key={step} className={`workflow-step ${state}`}>
+            <span className="workflow-step-dot" aria-hidden="true" />
+            <span className="workflow-step-label">{t(`workflow.steps.${step}`)}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function EmptyState({ title, message }) {
+  return (
+    <div className="workflow-empty-state">
+      <div className="workflow-empty-icon" aria-hidden="true">✦</div>
+      <h3>{title}</h3>
+      <p>{message}</p>
+    </div>
+  );
+}
+
 function AdminDashboard({ applications, conventions, onValidate, onReject }) {
   const { t } = useI18n();
 
@@ -12,18 +53,37 @@ function AdminDashboard({ applications, conventions, onValidate, onReject }) {
     const totalPlannedHours = applications.reduce((sum, app) => sum + (Number(app.targetHours) || 0), 0);
 
     return [
-      { id: 'pending', label: t('admin.kpis.pending_requests'), value: pendingRequests },
-      { id: 'validated', label: t('admin.kpis.validated_requests'), value: validatedRequests },
-      { id: 'conventions', label: t('admin.kpis.generated_conventions'), value: generatedConventions },
-      { id: 'hours', label: t('admin.kpis.total_planned_hours'), value: totalPlannedHours }
+      { id: 'pending', label: t('admin.kpis.pending_requests'), value: pendingRequests, tone: 'amber' },
+      { id: 'validated', label: t('admin.kpis.validated_requests'), value: validatedRequests, tone: 'teal' },
+      { id: 'conventions', label: t('admin.kpis.generated_conventions'), value: generatedConventions, tone: 'blue' },
+      { id: 'hours', label: t('admin.kpis.total_planned_hours'), value: totalPlannedHours, tone: 'slate' }
     ];
   }, [applications, conventions, t]);
 
+  const conventionByApplication = useMemo(() => {
+    return conventions.reduce((lookup, convention) => {
+      lookup[convention.applicationId] = convention;
+      return lookup;
+    }, {});
+  }, [conventions]);
+
   return (
-    <div className="admin-dashboard-layout">
+    <div className="dashboard-shell admin-dashboard-layout">
+      <section className="dashboard-hero admin-hero">
+        <div>
+          <p className="eyebrow">{t('workflow.eyebrow')}</p>
+          <h1>{t('admin.hero.title')}</h1>
+          <p>{t('admin.hero.subtitle')}</p>
+        </div>
+        <div className="hero-workflow-card">
+          <span>{t('workflow.timeline_label')}</span>
+          <WorkflowTimeline status={conventions.length > 0 ? 'ready' : 'pending'} hasConvention={conventions.length > 0} />
+        </div>
+      </section>
+
       <section className="admin-kpi-grid" aria-label="KPI cards">
         {metrics.map((metric) => (
-          <article key={metric.id} className="admin-kpi-card">
+          <article key={metric.id} className={`admin-kpi-card tone-${metric.tone}`}>
             <p className="admin-kpi-label">{metric.label}</p>
             <p className="admin-kpi-value">{metric.value}</p>
           </article>
@@ -31,47 +91,47 @@ function AdminDashboard({ applications, conventions, onValidate, onReject }) {
       </section>
 
       <section className="workflow-card workflow-card-premium">
-        <div className="section-header">
-          <h2>{t('admin.sections.student_requests')}</h2>
+        <div className="section-header roomy">
+          <div>
+            <p className="eyebrow">{t('admin.sections.review_queue')}</p>
+            <h2>{t('admin.sections.student_requests')}</h2>
+          </div>
+          <span className="section-count">{applications.length}</span>
         </div>
 
-        <div className="admin-table-wrapper">
-          <table className="workflow-table admin-table">
-            <thead>
-              <tr>
-                <th>{t('admin.table.student')}</th>
-                <th>{t('admin.table.ngo')}</th>
-                <th>{t('admin.table.mission')}</th>
-                <th>{t('admin.table.dates')}</th>
-                <th>{t('admin.table.hours')}</th>
-                <th>{t('admin.table.status')}</th>
-                <th>{t('admin.table.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="table-empty-message">{t('admin.table.no_requests')}</td>
-                </tr>
-              )}
-              {applications.map((app) => (
-                <tr key={app.id}>
-                  <td className="cell-student">
-                    <span className="entity-primary">{app.studentName}</span>
-                    <span className="entity-secondary">{app.studentEmail}</span>
-                  </td>
-                  <td>
-                    <span className="entity-primary">{app.ngoName}</span>
-                  </td>
-                  <td>
-                    <span className="mission-text">{app.missionDescription}</span>
-                  </td>
-                  <td>{app.startDate} {t('common.date_separator')} {app.endDate}</td>
-                  <td>{app.targetHours}</td>
-                  <td><StatusBadge status={app.status} /></td>
-                  <td className="actions-cell premium-actions">
+        {applications.length === 0 ? (
+          <EmptyState title={t('admin.empty.requests_title')} message={t('admin.table.no_requests')} />
+        ) : (
+          <div className="request-card-grid">
+            {applications.map((app) => {
+              const linkedConvention = conventionByApplication[app.id];
+              return (
+                <article key={app.id} className="request-card">
+                  <div className="request-card-topline">
+                    <div className="avatar-initials" aria-hidden="true">
+                      {app.studentName?.split(' ').map((part) => part[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="request-card-identity">
+                      <h3>{app.studentName}</h3>
+                      <p>{app.studentEmail}</p>
+                    </div>
+                    <StatusBadge status={app.status} />
+                  </div>
+
+                  <div className="request-card-body">
+                    <p className="request-ngo">{app.ngoName}</p>
+                    <p className="request-mission">{app.missionDescription}</p>
+                    <div className="meta-row">
+                      <span>{app.startDate} {t('common.date_separator')} {app.endDate}</span>
+                      <span>{app.targetHours}h</span>
+                    </div>
+                  </div>
+
+                  <WorkflowTimeline status={app.status} hasConvention={Boolean(linkedConvention)} />
+
+                  <div className="card-actions">
                     <button
-                      className="table-btn success primary"
+                      className="table-btn primary"
                       disabled={app.status !== 'pending'}
                       onClick={() => onValidate(app.id)}
                     >
@@ -85,34 +145,39 @@ function AdminDashboard({ applications, conventions, onValidate, onReject }) {
                     >
                       {t('admin.actions.reject')}
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="workflow-card workflow-card-premium">
-        <div className="section-header">
-          <h2>{t('admin.sections.generated_conventions')}</h2>
+        <div className="section-header roomy">
+          <div>
+            <p className="eyebrow">{t('admin.sections.generated_packet')}</p>
+            <h2>{t('admin.sections.generated_conventions')}</h2>
+          </div>
+          <span className="section-count">{conventions.length}</span>
         </div>
 
         <div className="conventions-list">
           {conventions.length === 0 && (
-            <p className="table-empty-message standalone">{t('admin.table.no_conventions')}</p>
+            <EmptyState title={t('admin.empty.conventions_title')} message={t('admin.table.no_conventions')} />
           )}
           {conventions.map((convention) => (
-            <article key={convention.id} className="convention-row">
+            <article key={convention.id} className="convention-row convention-card">
               <div className="convention-main">
                 <p className="entity-primary">{convention.studentName}</p>
                 <p className="entity-secondary">{convention.ngoName}</p>
               </div>
-              <div className="convention-period">
-                {convention.startDate} {t('common.date_separator')} {convention.endDate}
+              <div className="convention-meta-stack">
+                <span>{convention.startDate} {t('common.date_separator')} {convention.endDate}</span>
+                <span>{convention.targetHours}h</span>
               </div>
-              <div className="convention-hours">{convention.targetHours}h</div>
               <StatusBadge status={convention.status} />
+              <WorkflowTimeline status={convention.status} hasConvention />
               <span className="convention-id">{t('admin.conventions.id_label')} #{convention.id}</span>
             </article>
           ))}

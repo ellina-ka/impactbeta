@@ -1,10 +1,11 @@
 import React from 'react';
-import { LayoutDashboard, Heart, User, Building2 } from 'lucide-react';
+import { LayoutDashboard, Heart, User, Building2, ShieldCheck } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext';
 import './styles.css';
 
 function Sidebar({ currentRole }) {
   const { t } = useI18n();
+  const RoleIcon = currentRole === 'student' ? User : currentRole === 'ngo_admin' ? Building2 : ShieldCheck;
 
   return (
     <aside className="sidebar" data-testid="sidebar">
@@ -27,7 +28,7 @@ function Sidebar({ currentRole }) {
       </nav>
 
       <div className="sidebar-role-hint">
-        {currentRole === 'student' ? <User size={15} /> : <Building2 size={15} />}
+        <RoleIcon size={15} />
         <span>{t('sidebar.viewing_as', { role: t(`roles.${currentRole}`) })}</span>
       </div>
     </aside>
