@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import StatusBadge from './StatusBadge';
 import { useI18n } from '../../i18n/I18nContext';
 
@@ -12,9 +12,18 @@ const EMPTY_FORM = {
   targetHours: 20
 };
 
-function StudentDashboard({ applications, conventions, onSubmitApplication }) {
+function StudentDashboard({ applications, conventions, profile, onSubmitApplication }) {
   const { t } = useI18n();
   const [form, setForm] = useState(EMPTY_FORM);
+
+  useEffect(() => {
+    if (!profile) return;
+    setForm((current) => ({
+      ...current,
+      studentName: profile.fullName || '',
+      studentEmail: profile.email || ''
+    }));
+  }, [profile]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -24,7 +33,11 @@ function StudentDashboard({ applications, conventions, onSubmitApplication }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     await onSubmitApplication(form);
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      studentName: profile?.fullName || '',
+      studentEmail: profile?.email || ''
+    });
   };
 
   const myApplication = applications[0];
@@ -36,8 +49,8 @@ function StudentDashboard({ applications, conventions, onSubmitApplication }) {
       <section className="workflow-card">
         <h2>{t('student.sections.my_request')}</h2>
         <form className="student-form" onSubmit={handleSubmit}>
-          <input required name="studentName" value={form.studentName} onChange={handleChange} placeholder={t('student.fields.student_name')} />
-          <input required type="email" name="studentEmail" value={form.studentEmail} onChange={handleChange} placeholder={t('student.fields.student_email')} />
+          <input required name="studentName" value={form.studentName} onChange={handleChange} placeholder={t('student.fields.student_name')} readOnly />
+          <input required type="email" name="studentEmail" value={form.studentEmail} onChange={handleChange} placeholder={t('student.fields.student_email')} readOnly />
           <input required name="ngoName" value={form.ngoName} onChange={handleChange} placeholder={t('student.fields.ngo_name')} />
           <textarea required name="missionDescription" value={form.missionDescription} onChange={handleChange} placeholder={t('student.fields.mission_description')} />
           <div className="inline-fields">

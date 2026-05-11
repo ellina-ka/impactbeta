@@ -3475,3 +3475,68 @@
   background: #f8d7da;
   font-weight: 600;
 }
+
+.demo-role-switcher::before {
+  content: "DEMO";
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f97316;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.current-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  padding: 7px 10px;
+  border: 1px solid #d0d9de;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.current-user div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.current-user strong,
+.current-user span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-user strong {
+  font-size: 13px;
+}
+
+.current-user span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d0d9de;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4648;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 9px 12px;
+}
+
+.logout-btn:hover {
+  background: #edf7f5;
+}
