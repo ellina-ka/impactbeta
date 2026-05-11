@@ -7,7 +7,7 @@ function Topbar({ currentRole, roles, profile, isDemoBuild, onRoleChange, onLogo
   const { language, setLanguage, t } = useI18n();
 
   return (
-    <header className="topbar" data-testid="topbar">
+    <header className={`topbar role-${currentRole}`} data-testid="topbar">
       <div className="topbar-content">
         <h2 className="topbar-title">{t(`topbar.${currentRole}_title`)}</h2>
         <p className="topbar-subtitle">{t(`topbar.${currentRole}_subtitle`)}</p>
