@@ -1,29 +1,28 @@
 .app-container {
   display: flex;
   min-height: 100vh;
-  background-color: #f3f6f8;
+  background:
+    radial-gradient(circle at top left, rgba(185, 243, 223, 0.35), transparent 32rem),
+    linear-gradient(180deg, #f5f8f7 0%, #eef4f2 100%);
 }
 
 .main-content {
   flex: 1;
-  margin-left: 228px;
+  margin-left: 248px;
   display: flex;
+  min-width: 0;
   flex-direction: column;
 }
 
 .page-content {
   flex: 1;
-  padding: 20px 28px;
+  padding: clamp(18px, 3vw, 34px);
   overflow-y: auto;
 }
 
 @media (max-width: 1024px) {
   .main-content {
-    margin-left: 228px;
-  }
-
-  .page-content {
-    padding: 18px;
+    margin-left: 248px;
   }
 }
 
