@@ -13,7 +13,9 @@ export const translations = {
       ngo_admin_title: 'Espace ONG',
       ngo_admin_subtitle: 'Consultez les conventions et finalisez les signatures',
       role_selector_label: 'Rôle',
-      language_label: 'Langue'
+      demo_role_selector_label: 'Sélecteur de rôle démo',
+      language_label: 'Langue',
+      logout: 'Déconnexion'
     },
     sidebar: {
       dashboard: 'Tableau de bord',
@@ -160,7 +162,9 @@ export const translations = {
       ngo_admin_title: 'NGO space',
       ngo_admin_subtitle: 'Review conventions and complete signatures',
       role_selector_label: 'Role',
-      language_label: 'Language'
+      demo_role_selector_label: 'Demo role switcher',
+      language_label: 'Language',
+      logout: 'Logout'
     },
     sidebar: {
       dashboard: 'Dashboard',

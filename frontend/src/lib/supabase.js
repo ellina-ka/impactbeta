@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
+export const USER_ROLES = ['school_admin', 'student', 'ngo_admin'];
+export const DEFAULT_ROLE = 'student';
+
 // Required local env vars (Create React App):
 // - REACT_APP_SUPABASE_URL, or REACT_APP_SUPABASE_PROJECT_REF
 // - REACT_APP_SUPABASE_PUBLISHABLE_KEY, or legacy REACT_APP_SUPABASE_ANON_KEY

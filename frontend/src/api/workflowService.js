@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isDemoBuild, isSupabaseConfigured } from '../lib/supabase';
 import { initialApplications, initialConventions } from '../data/workflowMockData';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -82,12 +82,39 @@ function warnAndFallback(context, error) {
   console.warn(`${context}; using local demo workflow data instead.`, error);
 }
 
-function getLocalApplications() {
-  return clone(localStore.applications).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+function filterByProfile(items, profile) {
+  if (!profile || profile.role === 'school_admin') return items;
+
+  if (profile.role === 'student') {
+    return items.filter((item) => item.studentEmail === profile.email);
+  }
+
+  if (profile.role === 'ngo_admin') {
+    const organization = profile.organizationName?.toLowerCase();
+    if (!organization) return [];
+    return items.filter((item) => item.ngoName.toLowerCase().includes(organization));
+  }
+
+  return [];
 }
 
-function getLocalConventions() {
-  return clone(localStore.conventions).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+function applyProfileFilters(query, profile) {
+  if (!profile || profile.role === 'school_admin') return query;
+  if (profile.role === 'student') return query.eq('student_email', profile.email);
+  if (profile.role === 'ngo_admin' && profile.organizationName) {
+    return query.ilike('ngo_name', `%${profile.organizationName}%`);
+  }
+  return query.eq('id', '__forbidden__');
+}
+
+function getLocalApplications(profile) {
+  return filterByProfile(clone(localStore.applications), profile)
+    .sort((a, b) => String(b.id).localeCompare(String(a.id)));
+}
+
+function getLocalConventions(profile) {
+  return filterByProfile(clone(localStore.conventions), profile)
+    .sort((a, b) => String(b.id).localeCompare(String(a.id)));
 }
 
 function createLocalApplication(payload) {
@@ -135,25 +162,30 @@ function rejectLocalApplication(id) {
   return clone(application);
 }
 
-export async function getApplications() {
-  if (!isSupabaseConfigured) return getLocalApplications();
+export async function getApplications(profile) {
+  if (!isSupabaseConfigured || isDemoBuild) return getLocalApplications(profile);
 
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from('applications')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('id', { ascending: false });
+    const { data, error } = await applyProfileFilters(query, profile);
 
     throwIfError(error, 'Failed to fetch applications');
     return (data || []).map(mapApplicationRow);
   } catch (error) {
     warnAndFallback('Failed to fetch applications', error);
-    return getLocalApplications();
+    return getLocalApplications(profile);
   }
 }
 
-export async function createApplication(payload) {
-  if (!isSupabaseConfigured) return createLocalApplication(payload);
+export async function createApplication(payload, profile) {
+  if (profile?.role && profile.role !== 'student' && profile.role !== 'school_admin') {
+    throw new Error('Only students can submit applications.');
+  }
+
+  if (!isSupabaseConfigured || isDemoBuild) return createLocalApplication(payload);
 
   try {
     const { data, error } = await supabase
@@ -170,24 +202,25 @@ export async function createApplication(payload) {
   }
 }
 
-export async function submitApplication(payload) {
-  return createApplication(payload);
+export async function submitApplication(payload, profile) {
+  return createApplication(payload, profile);
 }
 
-export async function getConventions() {
-  if (!isSupabaseConfigured) return getLocalConventions();
+export async function getConventions(profile) {
+  if (!isSupabaseConfigured || isDemoBuild) return getLocalConventions(profile);
 
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from('conventions')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('id', { ascending: false });
+    const { data, error } = await applyProfileFilters(query, profile);
 
     throwIfError(error, 'Failed to fetch conventions');
     return (data || []).map(mapConventionRow);
   } catch (error) {
     warnAndFallback('Failed to fetch conventions', error);
-    return getLocalConventions();
+    return getLocalConventions(profile);
   }
 }
 
@@ -204,8 +237,9 @@ export async function createConventionFromApplication(application) {
   return mapConventionRow(data);
 }
 
-export async function validateApplication(id) {
-  if (!isSupabaseConfigured) return validateLocalApplication(id);
+export async function validateApplication(id, profile) {
+  if (profile?.role !== 'school_admin') throw new Error('Only school administrators can validate requests.');
+  if (!isSupabaseConfigured || isDemoBuild) return validateLocalApplication(id);
 
   try {
     const { data: updatedRow, error: updateError } = await supabase
@@ -237,8 +271,9 @@ export async function validateApplication(id) {
   }
 }
 
-export async function rejectApplication(id) {
-  if (!isSupabaseConfigured) return rejectLocalApplication(id);
+export async function rejectApplication(id, profile) {
+  if (profile?.role !== 'school_admin') throw new Error('Only school administrators can reject requests.');
+  if (!isSupabaseConfigured || isDemoBuild) return rejectLocalApplication(id);
 
   try {
     const { data, error } = await supabase

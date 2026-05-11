@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import StatusBadge from './StatusBadge';
 import { useI18n } from '../../i18n/I18nContext';
 
@@ -12,39 +12,18 @@ const EMPTY_FORM = {
   targetHours: 20
 };
 
-const WORKFLOW_STEPS = ['submit', 'validate', 'generate', 'sign', 'complete'];
-
-function getWorkflowProgress(status, hasConvention = false) {
-  if (status === 'active' || status === 'complete' || status === 'completed') return 5;
-  if (status === 'signed') return 4;
-  if (status === 'ready' || hasConvention) return 3;
-  if (status === 'validated') return 2;
-  return 1;
-}
-
-function WorkflowTimeline({ status, hasConvention = false }) {
-  const { t } = useI18n();
-  const progress = getWorkflowProgress(status, hasConvention);
-
-  return (
-    <ol className="workflow-timeline" aria-label={t('workflow.timeline_label')}>
-      {WORKFLOW_STEPS.map((step, index) => {
-        const stepNumber = index + 1;
-        const state = stepNumber < progress ? 'complete' : stepNumber === progress ? 'current' : 'upcoming';
-        return (
-          <li key={step} className={`workflow-step ${state}`}>
-            <span className="workflow-step-dot" aria-hidden="true" />
-            <span className="workflow-step-label">{t(`workflow.steps.${step}`)}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function StudentDashboard({ applications, conventions, onSubmitApplication }) {
+function StudentDashboard({ applications, conventions, profile, onSubmitApplication }) {
   const { t } = useI18n();
   const [form, setForm] = useState(EMPTY_FORM);
+
+  useEffect(() => {
+    if (!profile) return;
+    setForm((current) => ({
+      ...current,
+      studentName: profile.fullName || '',
+      studentEmail: profile.email || ''
+    }));
+  }, [profile]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -54,7 +33,11 @@ function StudentDashboard({ applications, conventions, onSubmitApplication }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     await onSubmitApplication(form);
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      studentName: profile?.fullName || '',
+      studentEmail: profile?.email || ''
+    });
   };
 
   const myApplication = applications[0];
