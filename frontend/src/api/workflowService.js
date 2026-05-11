@@ -142,7 +142,7 @@ export async function getApplications() {
     const { data, error } = await supabase
       .from('applications')
       .select('*')
-      .order('id', { ascending: false });
+      .order('created_at', { ascending: false });
 
     throwIfError(error, 'Failed to fetch applications');
     return (data || []).map(mapApplicationRow);
@@ -181,7 +181,7 @@ export async function getConventions() {
     const { data, error } = await supabase
       .from('conventions')
       .select('*')
-      .order('id', { ascending: false });
+      .order('created_at', { ascending: false });
 
     throwIfError(error, 'Failed to fetch conventions');
     return (data || []).map(mapConventionRow);
