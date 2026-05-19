@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { Download } from 'lucide-react';
 import StatusBadge from './StatusBadge';
+import WorkflowTimeline from './WorkflowTimeline';
 import { useI18n } from '../../i18n/I18nContext';
+import { downloadConventionPdf } from '../../utils/conventionPdf';
 
 const EMPTY_FORM = {
   studentName: '',
@@ -150,6 +153,14 @@ function StudentDashboard({ applications, conventions, profile, onSubmitApplicat
                 <div><dt>{t('student.labels.ngo')}</dt><dd>{myConvention.ngoName}</dd></div>
                 <div><dt>{t('student.labels.period')}</dt><dd>{myConvention.startDate} {t('common.date_separator')} {myConvention.endDate}</dd></div>
               </dl>
+              <button
+                type="button"
+                className="table-btn primary cta-btn pdf-download-btn"
+                onClick={() => downloadConventionPdf(myConvention)}
+              >
+                <Download size={16} />
+                {t('common.download_pdf')}
+              </button>
             </div>
           ) : (
             <p className="helper-copy">{t('student.no_convention')}</p>

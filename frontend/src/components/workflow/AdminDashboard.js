@@ -1,37 +1,9 @@
 import React, { useMemo } from 'react';
+import { Download } from 'lucide-react';
 import StatusBadge from './StatusBadge';
+import WorkflowTimeline from './WorkflowTimeline';
 import { useI18n } from '../../i18n/I18nContext';
-
-const WORKFLOW_STEPS = ['submit', 'validate', 'generate', 'sign', 'complete'];
-
-function getWorkflowProgress(status, hasConvention = false) {
-  if (status === 'rejected') return 1;
-  if (status === 'active' || status === 'complete' || status === 'completed') return 5;
-  if (status === 'signed') return 4;
-  if (status === 'ready' || hasConvention) return 3;
-  if (status === 'validated') return 2;
-  return 1;
-}
-
-function WorkflowTimeline({ status, hasConvention = false }) {
-  const { t } = useI18n();
-  const progress = getWorkflowProgress(status, hasConvention);
-
-  return (
-    <ol className="workflow-timeline" aria-label={t('workflow.timeline_label')}>
-      {WORKFLOW_STEPS.map((step, index) => {
-        const stepNumber = index + 1;
-        const state = stepNumber < progress ? 'complete' : stepNumber === progress ? 'current' : 'upcoming';
-        return (
-          <li key={step} className={`workflow-step ${state}`}>
-            <span className="workflow-step-dot" aria-hidden="true" />
-            <span className="workflow-step-label">{t(`workflow.steps.${step}`)}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
+import { downloadConventionPdf } from '../../utils/conventionPdf';
 
 function EmptyState({ title, message }) {
   return (
@@ -62,7 +34,7 @@ function AdminDashboard({ applications, conventions, onValidate, onReject }) {
 
   const conventionByApplication = useMemo(() => {
     return conventions.reduce((lookup, convention) => {
-      lookup[convention.applicationId] = convention;
+      lookup[String(convention.applicationId)] = convention;
       return lookup;
     }, {});
   }, [conventions]);
@@ -104,7 +76,7 @@ function AdminDashboard({ applications, conventions, onValidate, onReject }) {
         ) : (
           <div className="request-card-grid">
             {applications.map((app) => {
-              const linkedConvention = conventionByApplication[app.id];
+              const linkedConvention = conventionByApplication[String(app.id)];
               return (
                 <article key={app.id} className="request-card">
                   <div className="request-card-topline">
@@ -138,6 +110,15 @@ function AdminDashboard({ applications, conventions, onValidate, onReject }) {
                       {t('admin.actions.validate')}
                     </button>
                     <button className="table-btn secondary">{t('admin.actions.view')}</button>
+                    {linkedConvention && (
+                      <button
+                        className="table-btn secondary"
+                        onClick={() => downloadConventionPdf(linkedConvention)}
+                      >
+                        <Download size={15} />
+                        {t('common.download_pdf')}
+                      </button>
+                    )}
                     <button
                       className="text-link-btn"
                       disabled={app.status !== 'pending'}
@@ -179,6 +160,13 @@ function AdminDashboard({ applications, conventions, onValidate, onReject }) {
               <StatusBadge status={convention.status} />
               <WorkflowTimeline status={convention.status} hasConvention />
               <span className="convention-id">{t('admin.conventions.id_label')} #{convention.id}</span>
+              <button
+                className="table-btn primary"
+                onClick={() => downloadConventionPdf(convention)}
+              >
+                <Download size={15} />
+                {t('common.download_pdf')}
+              </button>
             </article>
           ))}
         </div>

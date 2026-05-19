@@ -8,9 +8,24 @@ Run `supabase/migrations/20260511000000_workflow_schema.sql` in your Supabase SQ
 
 - `public.applications` for student submissions.
 - `public.conventions` for conventions generated when an admin validates an application.
-- prototype RLS policies that allow the current unauthenticated demo to read/write using the browser publishable key.
+- `public.profiles` for role assignment after Supabase Auth login.
+- role-aware RLS policies for school admin, student, and NGO access.
 
-The policies are intentionally permissive for the prototype workflow. Replace them with authenticated, role-aware policies before production launch.
+Then create the three demo Auth users in Supabase and use `supabase/seed.sql` to load credible applications and generated conventions.
+
+Recommended demo accounts:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| School admin | `admin@impactbeta.app` | `Impactbeta2026!` |
+| Student | `lina.moreau@sciencespo.fr` | `Impactbeta2026!` |
+| NGO admin | `ngo@impactbeta.app` | `Impactbeta2026!` |
+
+After creating the Auth users, add matching rows to `public.profiles` with their Auth user IDs:
+
+- `admin@impactbeta.app`: `school_admin`, organization `Sciences Po`
+- `lina.moreau@sciencespo.fr`: `student`, organization `Sciences Po`
+- `ngo@impactbeta.app`: `ngo_admin`, organization `Croix-Rouge`
 
 ## 2. Configure frontend environment
 
@@ -19,7 +34,7 @@ Create a local `frontend/.env.local` file or set equivalent variables in your ho
 ```bash
 REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
 REACT_APP_SUPABASE_PUBLISHABLE_KEY=sb_publishable_replace_with_your_publishable_key
-REACT_APP_DEMO_FALLBACK=true
+REACT_APP_DEMO_FALLBACK=false
 ```
 
 You can use `REACT_APP_SUPABASE_PROJECT_REF=your-project-ref` instead of `REACT_APP_SUPABASE_URL`; the frontend will derive `https://<project-ref>.supabase.co`.
@@ -28,7 +43,7 @@ Do **not** put `sb_secret_*` or service-role keys in any `REACT_APP_*` variable.
 
 ## 3. Verify integration
 
-Start with fallback enabled so the demo remains usable if schema or policy setup is incomplete:
+Build the app with fallback disabled so integration problems are visible before the sales demo:
 
 ```bash
 cd frontend
@@ -40,6 +55,7 @@ Then run the app and smoke-test:
 1. Student submits an application.
 2. School admin validates it.
 3. A convention appears in the admin convention list.
-4. NGO admin sees conventions matching the demo NGO filter.
+4. Admin, student, and NGO can download the generated convention PDF.
+5. NGO admin sees conventions matching the demo NGO filter.
 
-After the schema and policies are verified, set `REACT_APP_DEMO_FALLBACK=false` in a staging environment to make Supabase errors visible instead of silently using local demo data.
+For local rehearsals without Supabase, set `REACT_APP_DEMO_MODE=true`. The app will use in-browser demo data and a role switcher.

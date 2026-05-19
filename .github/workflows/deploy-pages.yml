@@ -30,8 +30,11 @@ jobs:
       - name: Build
         working-directory: frontend
         env:
-          REACT_APP_STATIC_MODE: 'true'
+          REACT_APP_STATIC_MODE: 'false'
+          REACT_APP_DEMO_MODE: 'false'
           REACT_APP_DEMO_FALLBACK: 'true'
+          REACT_APP_SUPABASE_URL: ${{ vars.REACT_APP_SUPABASE_URL }}
+          REACT_APP_SUPABASE_PUBLISHABLE_KEY: ${{ vars.REACT_APP_SUPABASE_PUBLISHABLE_KEY }}
           PUBLIC_URL: /impactbeta
         run: npm run build
       - name: Upload Pages artifact

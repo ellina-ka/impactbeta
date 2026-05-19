@@ -9,7 +9,8 @@ import {
   getConventions,
   submitApplication,
   validateApplication,
-  rejectApplication
+  rejectApplication,
+  signConvention
 } from './api/workflowService';
 import {
   USER_ROLES,
@@ -32,12 +33,16 @@ function LoginView({ onAuthenticated }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState('student');
   const [organizationName, setOrganizationName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
   const isSignUp = mode === 'signup';
+  const demoCredentials = [
+    ['School admin', 'admin@impactbeta.app'],
+    ['Student', 'lina.moreau@sciencespo.fr'],
+    ['NGO admin', 'ngo@impactbeta.app']
+  ];
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -50,7 +55,7 @@ function LoginView({ onAuthenticated }) {
           email,
           password,
           fullName,
-          role,
+          role: 'student',
           organizationName
         });
 
@@ -76,14 +81,35 @@ function LoginView({ onAuthenticated }) {
           <p className="auth-eyebrow">Secure access</p>
           <h1>{isSignUp ? 'Create your ImpactBeta account' : 'Sign in to ImpactBeta'}</h1>
           <p className="auth-subtitle">
-            Use your real account to load your profile, permissions, and protected dashboard.
+            Use a demo account to walk through student submission, school validation, NGO review, and PDF download.
           </p>
         </div>
 
+        {!isSignUp && (
+          <div className="demo-credentials" aria-label="Demo accounts">
+            <p>Demo password: <strong>Impactbeta2026!</strong></p>
+            <div>
+              {demoCredentials.map(([label, accountEmail]) => (
+                <button
+                  key={accountEmail}
+                  type="button"
+                  onClick={() => {
+                    setEmail(accountEmail);
+                    setPassword('Impactbeta2026!');
+                  }}
+                >
+                  <span>{label}</span>
+                  <strong>{accountEmail}</strong>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {!isSupabaseConfigured && (
           <div className="workflow-alert" role="alert">
-            Supabase login is not configured. Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY,
-            or build with REACT_APP_DEMO_MODE=true for demos.
+            Supabase login is not configured. Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_PUBLISHABLE_KEY,
+            or build with REACT_APP_DEMO_MODE=true for a local walkthrough.
           </div>
         )}
 
@@ -97,19 +123,11 @@ function LoginView({ onAuthenticated }) {
                 <input required value={fullName} onChange={(event) => setFullName(event.target.value)} />
               </label>
               <label>
-                Role assignment
-                <select value={role} onChange={(event) => setRole(event.target.value)}>
-                  {USER_ROLES.map((item) => (
-                    <option key={item} value={item}>{item.replace('_', ' ')}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                School / NGO organization
+                School / institution
                 <input
                   value={organizationName}
                   onChange={(event) => setOrganizationName(event.target.value)}
-                  placeholder={role === 'ngo_admin' ? 'La Croix-Rouge française' : 'Sciences Po'}
+                  placeholder="Sciences Po"
                 />
               </label>
             </>
@@ -256,6 +274,18 @@ function AppContent() {
     await reloadData();
   };
 
+  const handleSignConvention = async (id) => {
+    if (currentRole !== 'ngo_admin' && currentRole !== 'school_admin') {
+      throw new Error('Only NGO or school administrators can sign conventions.');
+    }
+    const signedConvention = await signConvention(id, profile);
+    setConventions((current) => current.map((convention) => (
+      String(convention.id) === String(id)
+        ? { ...convention, ...signedConvention, status: 'signed' }
+        : convention
+    )));
+  };
+
   const roleApplications = useMemo(() => applications, [applications]);
   const roleConventions = useMemo(() => conventions, [conventions]);
 
@@ -286,7 +316,7 @@ function AppContent() {
       );
     }
 
-    return <NgoDashboard conventions={roleConventions} />;
+    return <NgoDashboard conventions={roleConventions} onSignConvention={handleSignConvention} />;
   };
 
   if (authLoading) {
