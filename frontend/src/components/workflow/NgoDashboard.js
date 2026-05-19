@@ -1,38 +1,11 @@
 import React from 'react';
+import { Download } from 'lucide-react';
 import StatusBadge from './StatusBadge';
+import WorkflowTimeline from './WorkflowTimeline';
 import { useI18n } from '../../i18n/I18nContext';
+import { downloadConventionPdf } from '../../utils/conventionPdf';
 
-const WORKFLOW_STEPS = ['submit', 'validate', 'generate', 'sign', 'complete'];
-
-function getWorkflowProgress(status) {
-  if (status === 'active' || status === 'complete' || status === 'completed') return 5;
-  if (status === 'signed') return 4;
-  if (status === 'ready') return 3;
-  if (status === 'validated') return 2;
-  return 1;
-}
-
-function WorkflowTimeline({ status }) {
-  const { t } = useI18n();
-  const progress = getWorkflowProgress(status);
-
-  return (
-    <ol className="workflow-timeline" aria-label={t('workflow.timeline_label')}>
-      {WORKFLOW_STEPS.map((step, index) => {
-        const stepNumber = index + 1;
-        const state = stepNumber < progress ? 'complete' : stepNumber === progress ? 'current' : 'upcoming';
-        return (
-          <li key={step} className={`workflow-step ${state}`}>
-            <span className="workflow-step-dot" aria-hidden="true" />
-            <span className="workflow-step-label">{t(`workflow.steps.${step}`)}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function NgoDashboard({ conventions }) {
+function NgoDashboard({ conventions, onSignConvention }) {
   const { t } = useI18n();
   const readyCount = conventions.filter((convention) => convention.status === 'ready').length;
 
@@ -97,8 +70,20 @@ function NgoDashboard({ conventions }) {
                 <WorkflowTimeline status={convention.status} />
 
                 <div className="ngo-actions">
-                  <button className="table-btn primary cta-btn">{t('ngo.actions.ready_to_sign')}</button>
-                  <button className="table-btn secondary">{t('admin.actions.view')}</button>
+                  <button
+                    className="table-btn primary cta-btn"
+                    disabled={convention.status !== 'ready'}
+                    onClick={() => onSignConvention(convention.id)}
+                  >
+                    {convention.status === 'signed' ? t('ngo.actions.signed') : t('ngo.actions.ready_to_sign')}
+                  </button>
+                  <button
+                    className="table-btn secondary"
+                    onClick={() => downloadConventionPdf(convention)}
+                  >
+                    <Download size={15} />
+                    {t('common.download_pdf')}
+                  </button>
                 </div>
               </article>
             ))}

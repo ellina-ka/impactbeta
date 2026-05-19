@@ -134,6 +134,18 @@ class VerificationRequest(BaseModel):
     ngo_name: Optional[str] = None
     action_description: Optional[str] = None
 
+class Convention(BaseModel):
+    id: str
+    application_id: str
+    student_name: str
+    student_email: str
+    ngo_name: str
+    mission_description: str
+    start_date: str
+    end_date: str
+    target_hours: float
+    status: str = "ready"
+
 class AuditEvent(BaseModel):
     event_id: str
     actor_id: str
@@ -173,6 +185,7 @@ class DataStore:
         self.students: dict[str, Student] = {}
         self.service_logs: dict[str, ServiceLog] = {}
         self.verification_requests: dict[str, VerificationRequest] = {}
+        self.conventions: dict[str, Convention] = {}
         self.audit_events: List[AuditEvent] = []
         self.settings: Settings = Settings()
         self._seed_data()
@@ -259,6 +272,36 @@ class DataStore:
         
         for vr in vr_data:
             self.verification_requests[vr.request_id] = vr
+
+        conventions_data = [
+            Convention(
+                id="conv-001",
+                application_id="app-004",
+                student_name="Thomas Martin",
+                student_email="thomas.martin@sciencespo.fr",
+                ngo_name="La Croix-Rouge francaise",
+                mission_description="Appui logistique evenements solidarite locale.",
+                start_date="2026-01-15",
+                end_date="2026-04-30",
+                target_hours=35,
+                status="ready",
+            ),
+            Convention(
+                id="conv-002",
+                application_id="app-005",
+                student_name="Maya Okafor",
+                student_email="maya.okafor@sciencespo.fr",
+                ngo_name="Bibliotheques Sans Frontieres",
+                mission_description="Animation d'ateliers de lecture et d'inclusion numerique pour nouveaux arrivants.",
+                start_date="2026-02-18",
+                end_date="2026-06-05",
+                target_hours=32,
+                status="ready",
+            ),
+        ]
+
+        for convention in conventions_data:
+            self.conventions[convention.id] = convention
 
 # Global data store instance
 db = DataStore()
@@ -703,6 +746,99 @@ def update_settings(request: UpdateSettingsRequest):
     db.audit_events.append(audit)
     
     return db.settings
+
+# Convention PDFs
+def _pdf_text(value: str) -> str:
+    safe = str(value or "").encode("latin-1", "replace").decode("latin-1")
+    return safe.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+def _pdf_text_command(text: str, x: int, y: int, size: int = 11, font: str = "F1") -> str:
+    return f"BT /{font} {size} Tf {x} {y} Td ({_pdf_text(text)}) Tj ET"
+
+def _build_convention_pdf(convention: Convention) -> bytes:
+    content = [
+        "0.93 0.97 0.96 rg 0 0 595 842 re f",
+        "1 1 1 rg 38 34 519 760 re f",
+        "0.09 0.28 0.29 RG 2 w 38 34 519 760 re S",
+        _pdf_text_command("MyImpact", 54, 784, 22, "F2"),
+        _pdf_text_command("Convention de mission citoyenne", 54, 754, 18, "F2"),
+        _pdf_text_command(f"Reference: #{convention.id}", 392, 784),
+        _pdf_text_command(f"Status: {convention.status}", 392, 766),
+        "0.90 0.96 0.94 rg 54 680 487 48 re f",
+        _pdf_text_command("Generated convention packet", 68, 704, 13, "F2"),
+        _pdf_text_command("Prepared for school, student, and NGO signature review.", 68, 688, 10),
+    ]
+
+    y = 642
+    fields = [
+        ("Student", convention.student_name),
+        ("Student email", convention.student_email),
+        ("NGO / organization", convention.ngo_name),
+        ("Mission period", f"{convention.start_date} to {convention.end_date}"),
+        ("Target hours", f"{convention.target_hours:g} hours"),
+    ]
+    for label, value in fields:
+        content.append(_pdf_text_command(label, 54, y, 10, "F2"))
+        content.append(_pdf_text_command(value, 190, y, 11))
+        content.append(f"54 {y - 10} m 540 {y - 10} l S")
+        y -= 34
+
+    content.append(_pdf_text_command("Mission description", 54, y - 10, 12, "F2"))
+    y -= 34
+    words = convention.mission_description.split()
+    line = ""
+    for word in words:
+        candidate = f"{line} {word}".strip()
+        if len(candidate) > 86 and line:
+            content.append(_pdf_text_command(line, 54, y, 11))
+            y -= 17
+            line = word
+        else:
+            line = candidate
+    if line:
+        content.append(_pdf_text_command(line, 54, y, 11))
+
+    y -= 60
+    content.append(_pdf_text_command("Signature placeholders", 54, y + 30, 12, "F2"))
+    for label, x in [("Student signature", 54), ("School administrator", 230), ("NGO representative", 390)]:
+        content.append(f"{x} {y} m {x + 130} {y} l S")
+        content.append(_pdf_text_command(label, x, y - 16, 9))
+        content.append(_pdf_text_command("Date:", x, y - 32, 9))
+
+    content.append(_pdf_text_command("Generated by ImpactBeta for prototype review. Confirm legal wording before production use.", 54, 74, 9))
+    stream = "\n".join(content)
+    objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
+        f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream",
+    ]
+    pdf = "%PDF-1.4\n"
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(pdf.encode("latin-1")))
+        pdf += f"{index} 0 obj\n{obj}\nendobj\n"
+    xref_offset = len(pdf.encode("latin-1"))
+    pdf += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n"
+    for offset in offsets[1:]:
+        pdf += f"{offset:010d} 00000 n \n"
+    pdf += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF"
+    return pdf.encode("latin-1")
+
+@app.get("/api/conventions/{convention_id}/pdf")
+def get_convention_pdf(convention_id: str):
+    if convention_id not in db.conventions:
+        raise HTTPException(status_code=404, detail="Convention not found")
+
+    convention = db.conventions[convention_id]
+    filename = f"convention-{convention.id}-{convention.student_name.lower().replace(' ', '-')}.pdf"
+    return StreamingResponse(
+        iter([_build_convention_pdf(convention)]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 # Export Endpoints
 @app.get("/api/export/verified-logs")

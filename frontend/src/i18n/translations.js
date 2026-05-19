@@ -132,7 +132,8 @@ export const translations = {
         target_hours: 'Heures prévues'
       },
       actions: {
-        ready_to_sign: 'Prête à signer'
+        ready_to_sign: 'Marquer signée',
+        signed: 'Signée'
       },
       no_conventions: 'Aucune convention disponible pour cette ONG.'
     },
@@ -142,10 +143,12 @@ export const translations = {
       rejected: 'Refusée',
       ready: 'Prête',
       draft: 'Brouillon',
-      active: 'Active'
+      active: 'Active',
+      signed: 'Signée'
     },
     common: {
-      date_separator: '→'
+      date_separator: '→',
+      download_pdf: 'Télécharger PDF'
     }
   },
   en: {
@@ -281,7 +284,8 @@ export const translations = {
         target_hours: 'Target hours'
       },
       actions: {
-        ready_to_sign: 'Ready to sign'
+        ready_to_sign: 'Mark signed',
+        signed: 'Signed'
       },
       no_conventions: 'No conventions available for this NGO.'
     },
@@ -291,10 +295,12 @@ export const translations = {
       rejected: 'Rejected',
       ready: 'Ready',
       draft: 'Draft',
-      active: 'Active'
+      active: 'Active',
+      signed: 'Signed'
     },
     common: {
-      date_separator: '→'
+      date_separator: '→',
+      download_pdf: 'Download PDF'
     }
   }
 };

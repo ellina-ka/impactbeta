@@ -21,6 +21,7 @@ function mapApplicationRow(row) {
     studentName: row.student_name,
     studentEmail: row.student_email,
     ngoName: row.ngo_name,
+    schoolName: row.school_name,
     missionDescription: row.mission_description,
     startDate: row.start_date,
     endDate: row.end_date,
@@ -37,6 +38,7 @@ function mapConventionRow(row) {
     studentName: row.student_name,
     studentEmail: row.student_email,
     ngoName: row.ngo_name,
+    schoolName: row.school_name,
     missionDescription: row.mission_description,
     startDate: row.start_date,
     endDate: row.end_date,
@@ -50,6 +52,7 @@ function mapApplicationPayloadToInsert(payload) {
     student_name: payload.studentName,
     student_email: payload.studentEmail,
     ngo_name: payload.ngoName,
+    school_name: payload.schoolName || payload.profile?.organizationName || 'Sciences Po',
     mission_description: payload.missionDescription,
     start_date: payload.startDate,
     end_date: payload.endDate,
@@ -64,6 +67,7 @@ function mapApplicationToConventionInsert(application) {
     student_name: application.studentName,
     student_email: application.studentEmail,
     ngo_name: application.ngoName,
+    school_name: application.schoolName || 'Sciences Po',
     mission_description: application.missionDescription,
     start_date: application.startDate,
     end_date: application.endDate,
@@ -80,6 +84,10 @@ function warnAndFallback(context, error) {
   if (!DEMO_FALLBACK) throw error;
   // eslint-disable-next-line no-console
   console.warn(`${context}; using local demo workflow data instead.`, error);
+}
+
+function shouldUseDemoDisplayData(profile, rows) {
+  return DEMO_FALLBACK && profile?.email && rows.length === 0;
 }
 
 function filterByProfile(items, profile) {
@@ -162,6 +170,13 @@ function rejectLocalApplication(id) {
   return clone(application);
 }
 
+function signLocalConvention(id) {
+  const convention = localStore.conventions.find((item) => String(item.id) === String(id));
+  if (!convention) throw new Error('Failed to sign convention: not found');
+  convention.status = 'signed';
+  return clone(convention);
+}
+
 export async function getApplications(profile) {
   if (!isSupabaseConfigured || isDemoBuild) return getLocalApplications(profile);
 
@@ -173,7 +188,8 @@ export async function getApplications(profile) {
     const { data, error } = await applyProfileFilters(query, profile);
 
     throwIfError(error, 'Failed to fetch applications');
-    return (data || []).map(mapApplicationRow);
+    const rows = (data || []).map(mapApplicationRow);
+    return shouldUseDemoDisplayData(profile, rows) ? getLocalApplications(profile) : rows;
   } catch (error) {
     warnAndFallback('Failed to fetch applications', error);
     return getLocalApplications(profile);
@@ -181,7 +197,7 @@ export async function getApplications(profile) {
 }
 
 export async function createApplication(payload, profile) {
-  if (profile?.role && profile.role !== 'student' && profile.role !== 'school_admin') {
+  if (profile?.role && profile.role !== 'student') {
     throw new Error('Only students can submit applications.');
   }
 
@@ -190,7 +206,7 @@ export async function createApplication(payload, profile) {
   try {
     const { data, error } = await supabase
       .from('applications')
-      .insert([mapApplicationPayloadToInsert(payload)])
+      .insert([mapApplicationPayloadToInsert({ ...payload, profile })])
       .select('*')
       .single();
 
@@ -217,7 +233,8 @@ export async function getConventions(profile) {
     const { data, error } = await applyProfileFilters(query, profile);
 
     throwIfError(error, 'Failed to fetch conventions');
-    return (data || []).map(mapConventionRow);
+    const rows = (data || []).map(mapConventionRow);
+    return shouldUseDemoDisplayData(profile, rows) ? getLocalConventions(profile) : rows;
   } catch (error) {
     warnAndFallback('Failed to fetch conventions', error);
     return getLocalConventions(profile);
@@ -288,5 +305,32 @@ export async function rejectApplication(id, profile) {
   } catch (error) {
     warnAndFallback('Failed to reject application', error);
     return rejectLocalApplication(id);
+  }
+}
+
+export async function signConvention(id, profile) {
+  if (profile?.role !== 'ngo_admin' && profile?.role !== 'school_admin') {
+    throw new Error('Only NGO or school administrators can sign conventions.');
+  }
+
+  if (!isSupabaseConfigured || isDemoBuild) return signLocalConvention(id);
+
+  try {
+    const { data, error } = await supabase
+      .from('conventions')
+      .update({ status: 'signed' })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    throwIfError(error, 'Failed to sign convention');
+    return mapConventionRow(data);
+  } catch (error) {
+    warnAndFallback('Failed to sign convention', error);
+    try {
+      return signLocalConvention(id);
+    } catch (_localError) {
+      return { id, status: 'signed', localOnly: true };
+    }
   }
 }
