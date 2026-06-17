@@ -1,6 +1,8 @@
 # Supabase workflow setup
 
-This app already routes the three role dashboards through `frontend/src/api/workflowService.js`. When Supabase is configured, applications and generated conventions persist in Supabase; when it is not configured, the app uses local demo data.
+ImpactBeta's sellable MVP should use Supabase as the source of truth for the role workflow. The React dashboards already route application and convention reads/writes through `frontend/src/api/workflowService.js`.
+
+Use local demo data only for clearly labeled sales walkthroughs. For integration testing and pilot deployments, set `REACT_APP_DEMO_FALLBACK=false` so schema, Auth, and RLS failures are visible.
 
 ## 1. Configure schema
 
@@ -34,6 +36,7 @@ Create a local `frontend/.env.local` file or set equivalent variables in your ho
 ```bash
 REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
 REACT_APP_SUPABASE_PUBLISHABLE_KEY=sb_publishable_replace_with_your_publishable_key
+REACT_APP_DEMO_MODE=false
 REACT_APP_DEMO_FALLBACK=false
 ```
 
@@ -43,19 +46,37 @@ Do **not** put `sb_secret_*` or service-role keys in any `REACT_APP_*` variable.
 
 ## 3. Verify integration
 
-Build the app with fallback disabled so integration problems are visible before the sales demo:
+Install dependencies and build the app with fallback disabled so integration problems are visible before the sales demo:
 
 ```bash
 cd frontend
+npm ci --no-audit --no-fund
 npm run build
+npm run smoke:supabase
 ```
 
-Then run the app and smoke-test:
+The smoke test signs in as the demo student, school admin, and NGO admin. It then creates a timestamped application, validates it, creates a convention, signs it as the NGO, and confirms the student can read the signed convention.
 
-1. Student submits an application.
-2. School admin validates it.
-3. A convention appears in the admin convention list.
-4. Admin, student, and NGO can download the generated convention PDF.
-5. NGO admin sees conventions matching the demo NGO filter.
+If your demo credentials differ, override them before running the smoke test:
 
-For local rehearsals without Supabase, set `REACT_APP_DEMO_MODE=true`. The app will use in-browser demo data and a role switcher.
+```bash
+export IMPACTBETA_DEMO_PASSWORD='your-demo-password'
+export IMPACTBETA_STUDENT_EMAIL='student@example.edu'
+export IMPACTBETA_ADMIN_EMAIL='admin@example.edu'
+export IMPACTBETA_NGO_EMAIL='ngo@example.org'
+npm run smoke:supabase
+```
+
+## 4. Manual smoke test
+
+After the automated smoke test passes, run the browser app and verify:
+
+1. The status banner says **Pilot mode**.
+2. Student submits an application.
+3. School admin validates it.
+4. A convention appears in the admin convention list.
+5. Admin, student, and NGO can download the generated convention PDF.
+6. NGO admin sees and signs conventions matching the demo NGO filter.
+7. Refreshing the browser keeps the updated state.
+
+For local rehearsals without Supabase, set `REACT_APP_DEMO_MODE=true` and `REACT_APP_DEMO_FALLBACK=true`. The app will use in-browser demo data and show the clearly labeled demo status banner.

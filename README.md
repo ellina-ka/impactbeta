@@ -117,37 +117,38 @@ Recommended immediate team habit:
 
 ---
 
-## 6) What to do next (v1): real backend + real data
+## 6) What to do next (v1): Supabase-first MVP
 
-You asked: “does backend data need another website?”
-
-**Short answer:** yes, the backend must run somewhere as a web service/API (not on GitHub Pages).
+The recommended v1 path is now **Supabase-first** for the current role workflow. GitHub Pages can host the React frontend, while Supabase provides Auth, Postgres persistence, and row-level security for the school admin, student, and NGO dashboards.
 
 ### Architecture for v1
 - Frontend: GitHub Pages (or Vercel/Netlify later)
-- Backend API: separate host (Render / Railway / Fly.io / AWS / etc.)
-- Database: Postgres (managed DB on Render/Neon/Supabase/etc.)
+- Auth: Supabase Auth
+- Database: Supabase Postgres
+- Authorization: Supabase RLS policies
+- FastAPI backend: legacy/admin analytics track, not the MVP source of truth
 
-Frontend will call:
-- `REACT_APP_BACKEND_URL=https://your-api-domain.com`
+Key docs:
+- `docs/supabase-first-mvp-tasks.md`
+- `docs/supabase-workflow-setup.md`
+- `supabase/migrations/20260511000000_workflow_schema.sql`
 
 ### Practical step-by-step next plan
-1. **Backend deploy target**: choose Render or Railway (fastest start).
-2. **Move backend from in-memory store to database** (Postgres).
-3. **Keep same API contract** so frontend changes are minimal.
-4. **Set CORS** to allow your frontend domain.
-5. **Set frontend env** `REACT_APP_BACKEND_URL` to hosted API URL.
-6. **Add auth** (admin login) before real users/data.
-7. **Add backups + migration scripts** for DB.
-8. **Then connect custom domain**.
+1. Run the Supabase workflow migration in the target project.
+2. Create demo Auth users and matching `public.profiles` rows.
+3. Configure frontend Supabase env vars.
+4. Set `REACT_APP_DEMO_MODE=false` and `REACT_APP_DEMO_FALLBACK=false` for integration/pilot builds.
+5. Run `npm run smoke:supabase` from `frontend/`.
+6. Keep the UI status banner in **Pilot mode** before selling the build as persistent.
+7. Add audit/status history and exports after the core role workflow is verified.
 
 ---
 
 ## 7) Suggested release roadmap
 
 - **v0 (current):** GitHub Pages static demo, mock data.
-- **v1:** hosted backend + real DB + persistent data.
-- **v1.1:** auth/roles + audit hardening.
+- **v1:** Supabase-backed role workflow with real Auth, RLS, and persistent data.
+- **v1.1:** audit/status history, exports, and onboarding hardening.
 - **v2:** production polish, observability, automated tests, custom domain everywhere.
 
 ---
@@ -155,7 +156,8 @@ Frontend will call:
 ## 8) File map for partner handoff
 
 - Frontend app root: `frontend/src/App.js`
-- API abstraction layer: `frontend/src/api/client.js`
+- Legacy admin API abstraction layer: `frontend/src/api/client.js`
+- Supabase workflow API layer: `frontend/src/api/workflowService.js`
 - Mock data for Pages mode: `frontend/src/data/mockData.js`
 - Pages deployment pipeline: `.github/workflows/deploy-pages.yml`
 - Backend service entrypoint: `backend/server.py`

@@ -195,3 +195,41 @@
   overflow-wrap: anywhere;
   font-size: 12px;
 }
+
+.integration-status-banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 34px;
+  border-bottom: 1px solid rgba(31, 67, 72, 0.10);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.integration-status-banner strong {
+  flex: 0 0 auto;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.integration-status-banner span {
+  color: #334155;
+}
+
+.integration-status-banner.demo {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.integration-status-banner.pilot {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+@media (max-width: 768px) {
+  .integration-status-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 10px 14px;
+  }
+}

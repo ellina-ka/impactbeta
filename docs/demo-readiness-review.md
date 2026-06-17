@@ -22,17 +22,17 @@ The live demo path is intentionally frontend-first. It can run without a hosted 
 ## What is not production-real yet
 
 - Local demo data is not persistent after refresh unless Supabase is correctly provisioned.
-- Supabase requires the `applications` and `conventions` tables with the column names expected by `frontend/src/api/workflowService.js`.
-- There is no authentication or row-level role security in the React demo flow yet.
-- The FastAPI backend and the Supabase workflow path are separate integration tracks; they are not yet a single production architecture.
-- GitHub Pages cannot host the FastAPI server. A hosted API service or a complete Supabase-backed workflow is required for real multi-user data.
+- Supabase requires the `profiles`, `applications`, and `conventions` tables with the column names expected by `frontend/src/api/workflowService.js`.
+- Supabase Auth and RLS are now the recommended production path, but they must be provisioned and smoke-tested in the target Supabase project before pilot use.
+- The FastAPI backend remains a legacy/admin analytics track; the Supabase workflow path is the MVP source of truth.
+- GitHub Pages cannot host the FastAPI server. A Supabase-backed workflow is the fastest path to real multi-user data for the current MVP.
 
 ## Why the live workflow can fail
 
 The most likely current failure modes are:
 
 1. **Dependency lock mismatch**: `npm ci` failed because `package-lock.json` was missing the resolved Tailwind nested `yaml` package metadata. This has been corrected.
-2. **Supabase configured but not ready**: if `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY` exist but the tables/policies are missing, reads/writes throw errors. The demo now falls back to local data unless `REACT_APP_DEMO_FALLBACK=false`.
+2. **Supabase configured but not ready**: if `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_PUBLISHABLE_KEY`/`REACT_APP_SUPABASE_ANON_KEY` exist but the tables/policies are missing, reads/writes throw errors. Demo builds can fall back to local data, but pilot builds should set `REACT_APP_DEMO_FALLBACK=false`.
 3. **Expecting GitHub Pages to run backend logic**: Pages only serves static files, so FastAPI endpoints are unavailable there.
 4. **Branch mismatch**: the Pages workflow deploys only pushes to `main` or manual workflow dispatches.
 
@@ -47,7 +47,7 @@ For a credible demo by tomorrow, keep the promise tight:
 - NGO admin sees conventions ready for signature.
 - Explain that persistence is either demo-mode in-memory or Supabase-backed when the database is provisioned.
 
-Do **not** promise production auth, complete audit exports, or real multi-user persistence unless Supabase/hosted backend is verified first.
+Do **not** promise production readiness, complete audit exports, or real multi-user persistence unless the Supabase pilot environment has passed the smoke test first.
 
 ## Immediate checklist before pushing demo
 
@@ -60,10 +60,10 @@ Do **not** promise production auth, complete audit exports, or real multi-user p
    - student submit works,
    - admin validate creates a convention,
    - NGO view displays convention data.
-5. If using Supabase, verify table names, columns, policies, and anon-key permissions before disabling demo fallback.
+5. If using Supabase, run `npm run smoke:supabase` with table names, columns, policies, profiles, and publishable-key permissions configured before disabling demo fallback in a live pilot.
 
 ## ETA
 
 - **Stabilized frontend demo deploy**: same day, assuming GitHub Actions can install dependencies and build.
-- **Supabase-backed persistent workflow**: 0.5-1 day after schema and RLS policies are created and verified.
+- **Supabase-backed persistent workflow**: 0.5-1 day after schema, profiles, RLS policies, and `npm run smoke:supabase` are verified.
 - **Production-grade app** with auth, persistence, audits, hosted backend strategy, tests, and real access controls: several additional days minimum.
