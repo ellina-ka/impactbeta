@@ -10,7 +10,8 @@ import {
   submitApplication,
   validateApplication,
   rejectApplication,
-  signConvention
+  signConvention,
+  isDemoFallbackEnabled
 } from './api/workflowService';
 import {
   USER_ROLES,
@@ -150,6 +151,31 @@ function LoginView({ onAuthenticated }) {
           {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Create one'}
         </button>
       </section>
+    </div>
+  );
+}
+
+
+function IntegrationStatusBanner() {
+  const isConnectedPilot = isSupabaseConfigured && !isDemoBuild && !isDemoFallbackEnabled;
+  const status = isConnectedPilot
+    ? {
+        tone: 'pilot',
+        label: 'Pilot mode',
+        message: 'Connected to Supabase with demo fallback disabled. Workflow data is expected to persist.'
+      }
+    : {
+        tone: 'demo',
+        label: isDemoBuild ? 'Demo mode' : 'Demo fallback enabled',
+        message: isDemoBuild
+          ? 'Using local browser demo data. Refreshing or rebuilding can reset workflow changes.'
+          : 'Supabase can be used, but read/write failures may fall back to local demo data.'
+      };
+
+  return (
+    <div className={`integration-status-banner ${status.tone}`} role="status">
+      <strong>{status.label}</strong>
+      <span>{status.message}</span>
     </div>
   );
 }
@@ -339,6 +365,7 @@ function AppContent() {
           onRoleChange={handleDemoRoleChange}
           onLogout={handleLogout}
         />
+        <IntegrationStatusBanner />
         <div className="page-content">
           {errorMessage && (
             <div className="workflow-alert" role="alert">

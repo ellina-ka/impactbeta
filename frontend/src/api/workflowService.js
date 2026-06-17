@@ -10,7 +10,7 @@ const localStore = {
 // Demo deploys should keep working even if Supabase env vars exist but the
 // backing tables/policies are not ready yet. Set REACT_APP_DEMO_FALLBACK=false
 // when you want Supabase errors to fail hard during production integration.
-const DEMO_FALLBACK = process.env.REACT_APP_DEMO_FALLBACK !== 'false';
+export const isDemoFallbackEnabled = process.env.REACT_APP_DEMO_FALLBACK !== 'false';
 
 const normalizeHours = (value) => Number(value || 0);
 
@@ -81,13 +81,27 @@ function throwIfError(error, context) {
 }
 
 function warnAndFallback(context, error) {
-  if (!DEMO_FALLBACK) throw error;
+  if (!isDemoFallbackEnabled) throw error;
   // eslint-disable-next-line no-console
   console.warn(`${context}; using local demo workflow data instead.`, error);
 }
 
 function shouldUseDemoDisplayData(profile, rows) {
-  return DEMO_FALLBACK && profile?.email && rows.length === 0;
+  return isDemoFallbackEnabled && profile?.email && rows.length === 0;
+}
+
+function shouldUseLocalWorkflowData() {
+  return isDemoBuild || isDemoFallbackEnabled;
+}
+
+function ensureWorkflowBackend(context) {
+  if (!isSupabaseConfigured && !shouldUseLocalWorkflowData()) {
+    throw new Error(
+      `${context}: Supabase is not configured and demo fallback is disabled. `
+      + 'Set REACT_APP_SUPABASE_URL plus REACT_APP_SUPABASE_PUBLISHABLE_KEY, '
+      + 'or enable REACT_APP_DEMO_MODE=true for a local walkthrough.'
+    );
+  }
 }
 
 function filterByProfile(items, profile) {
@@ -178,6 +192,7 @@ function signLocalConvention(id) {
 }
 
 export async function getApplications(profile) {
+  ensureWorkflowBackend('Failed to fetch applications');
   if (!isSupabaseConfigured || isDemoBuild) return getLocalApplications(profile);
 
   try {
@@ -201,6 +216,7 @@ export async function createApplication(payload, profile) {
     throw new Error('Only students can submit applications.');
   }
 
+  ensureWorkflowBackend('Failed to create application');
   if (!isSupabaseConfigured || isDemoBuild) return createLocalApplication(payload);
 
   try {
@@ -223,6 +239,7 @@ export async function submitApplication(payload, profile) {
 }
 
 export async function getConventions(profile) {
+  ensureWorkflowBackend('Failed to fetch conventions');
   if (!isSupabaseConfigured || isDemoBuild) return getLocalConventions(profile);
 
   try {
@@ -256,6 +273,7 @@ export async function createConventionFromApplication(application) {
 
 export async function validateApplication(id, profile) {
   if (profile?.role !== 'school_admin') throw new Error('Only school administrators can validate requests.');
+  ensureWorkflowBackend('Failed to validate application');
   if (!isSupabaseConfigured || isDemoBuild) return validateLocalApplication(id);
 
   try {
@@ -290,6 +308,7 @@ export async function validateApplication(id, profile) {
 
 export async function rejectApplication(id, profile) {
   if (profile?.role !== 'school_admin') throw new Error('Only school administrators can reject requests.');
+  ensureWorkflowBackend('Failed to reject application');
   if (!isSupabaseConfigured || isDemoBuild) return rejectLocalApplication(id);
 
   try {
@@ -313,6 +332,7 @@ export async function signConvention(id, profile) {
     throw new Error('Only NGO or school administrators can sign conventions.');
   }
 
+  ensureWorkflowBackend('Failed to sign convention');
   if (!isSupabaseConfigured || isDemoBuild) return signLocalConvention(id);
 
   try {
